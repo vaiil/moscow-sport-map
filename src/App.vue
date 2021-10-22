@@ -20,7 +20,7 @@
 <script>
 import vSelect from 'vue-select';
 import 'vue-select/dist/vue-select.css';
-import objects from '../test-data/limited.json';
+import { objects, owners } from '../test-data/data.json';
 import populationAreas from '../test-data/population_areas.json';
 import populationValues from '../test-data/population_values.json';
 import AppMap from './components/AppMap.vue';
@@ -48,7 +48,7 @@ export default {
   },
   data() {
     return {
-      center: [55.682126669, 37.597173135],
+      center: [55.78, 37.48],
       filter: {
         owners: [],
       },
@@ -57,13 +57,12 @@ export default {
   computed: {
     mapObjects() {
       return objects
-        .slice(0, 10)
-        .filter((item) => item.point.x && item.point.y)
+        // .slice(0, 10)
         .map((item) => ({
           id: item.id,
-          center: [+item.point.x, +item.point.y],
-          radius: getRadius(item.type),
-          ownerId: item.owner.id,
+          center: [+item.lat, +item.lng],
+          radius: getRadius(item.valueId),
+          ownerId: item.ownerId,
         }));
     },
     filteredObjects() {
@@ -77,14 +76,7 @@ export default {
       });
     },
     owners() {
-      const ownerMap = objects.reduce((map, item) => {
-        map.set(item.owner.id, item.owner.name);
-        return map;
-      }, new Map());
-      return [...ownerMap.entries()].map(([id, title]) => ({
-        id,
-        title,
-      }));
+      return Object.entries(owners).map(([id, title]) => ({ id, title }));
     },
     populationAreas() {
       return populationAreas.map((item, index) => (

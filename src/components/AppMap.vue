@@ -62,7 +62,6 @@ export default {
         const points = area.geometry.coordinates[0].map(([lng, lat]) => ({ lat, lng }));
         const square = L.GeometryUtil.geodesicArea(points);
         const density = area.population / square;
-        console.log(area.properties.description, density, area.population, square);
         return {
           polygon: points.map((item) => [item.lat, item.lng]),
           square,
