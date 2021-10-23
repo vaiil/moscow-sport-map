@@ -3,6 +3,7 @@
     class="app-map"
     :zoom="12"
     :center="center"
+    @click="mapClick"
   >
     <l-tile-layer
       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -10,26 +11,28 @@
       name="OpenStreetMap"
       :max-zoom="18"
     />
-    <l-circle
-      v-for="object of sportObjects"
-      :key="object.id"
-      :radius="object.radius"
-      :lat-lng="object.center"
-    />
     <l-polygon
       v-for="area of areas"
       :key="area.id"
       :lat-lngs="area.polygon"
       :fill="true"
-      :fill-color="area.color"
-      :fill-opacity="0.4"
+      fill-color="red"
+      :fill-opacity="area.opacity"
+    />
+    <l-circle
+      v-for="object of sportObjectCircles"
+      :key="object.id"
+      :radius="object.radius"
+      :lat-lng="object.center"
+      :fill-opacity="object.opacity"
+      :fill="true"
+      fill-color="green"
     />
   </l-map>
 </template>
 
 <script>
 import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
 import {
   LMap, LTileLayer, LCircle, LPolygon,
 } from '@vue-leaflet/vue-leaflet';
@@ -56,18 +59,33 @@ export default {
       required: true,
     },
   },
+  emits: ['mapClick'],
   computed: {
+    sportObjectCircles() {
+      const maxSquare = Math.max(...this.sportObjects.map(({ square }) => square));
+      return this.sportObjects.map((object) => ({
+        id: object.id,
+        radius: object.radius,
+        center: object.center,
+        opacity: (object.square / maxSquare) * 0.4,
+      }));
+    },
+    maxDensity() {
+      return Math.max(...this.populationAreas.map(({ density }) => density));
+    },
     areas() {
-      return this.populationAreas.map((area) => {
-        const points = area.geometry.coordinates[0].map(([lng, lat]) => ({ lat, lng }));
-        const square = L.GeometryUtil.geodesicArea(points);
-        const density = area.population / square;
-        return {
-          polygon: points.map((item) => [item.lat, item.lng]),
-          square,
-          color: `rgb(255, ${255 - density * 500}, 0)`,
-        };
-      });
+      return this.populationAreas.map((area) => ({
+        id: area.id,
+        polygon: area.points.map((item) => [item.lat, item.lng]),
+        opacity: 0.1 + (area.density / this.maxDensity) * 0.3,
+      }));
+    },
+  },
+  methods: {
+    mapClick(e) {
+      if (e.latlng) {
+        this.$emit('mapClick', e);
+      }
     },
   },
 };

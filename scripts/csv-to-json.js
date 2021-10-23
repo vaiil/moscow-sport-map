@@ -22,7 +22,7 @@ const headers = new Map([
 
 function filter({ lat, lng }) {
   // eslint-disable-next-line yoda
-  return (55.75 < lat && lat < 55.79) && (37.47 < lng && lng < 37.49);
+  return (55.75 < lat && lat < 55.79) && (37.45 < lng && lng < 37.51);
 }
 
 function createObject({
@@ -34,17 +34,20 @@ function createObject({
     address,
     ownerId,
     valueId,
-    lat,
-    lng,
+    lat: +lat,
+    lng: +lng,
     zones: new Map(),
   };
 }
 
-function createZone({ zoneType, zoneId, zoneName }) {
+function createZone({
+  zoneType, zoneId, zoneName, square,
+}) {
   return {
     zoneType,
     zoneId,
     zoneName,
+    square: +square,
     sports: [],
   };
 }
@@ -84,7 +87,7 @@ function processItems(lines) {
     objects: [...objects.entries()].map(([key, value]) => (
       {
         ...value,
-        zones: Object.fromEntries(value.zones),
+        zones: Array.from(value.zones.values()),
       })),
   };
 }
