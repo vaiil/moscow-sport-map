@@ -9,7 +9,7 @@
       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       layer-type="base"
       name="OpenStreetMap"
-      :max-zoom="20"
+      :max-zoom="19"
     />
     <l-layer-group
       :visible="settings.showPopulation"
@@ -27,16 +27,11 @@
       />
     </l-layer-group>
     <l-layer-group :visible="settings.showValueZones">
-      <l-circle
+      <l-geo-json
         v-for="object of sportObjectCircles"
         :key="object.id"
-        :radius="object.radius"
-        :lat-lng="object.center"
-        :fill-opacity="object.opacity"
-        :fill="true"
-        :weight="2"
-        color="green"
-        fill-color="green"
+        :geojson="object.geoJson"
+        :options="{style: object.style}"
       />
     </l-layer-group>
     <l-layer-group :visible="settings.showMarkers">
@@ -54,6 +49,10 @@
         </l-popup>
       </l-marker>
     </l-layer-group>
+    <l-geo-json
+      v-if="objectsIntersection"
+      :geojson="objectsIntersection"
+    />
     <l-marker
       v-if="point"
       radius="5"
@@ -65,7 +64,7 @@
 <script>
 import 'leaflet/dist/leaflet.css';
 import {
-  LMap, LTileLayer, LCircle, LPolygon, LMarker, LPopup, LLayerGroup,
+  LMap, LTileLayer, LGeoJson, LPolygon, LMarker, LPopup, LLayerGroup,
 } from '@vue-leaflet/vue-leaflet';
 import L from 'leaflet';
 import AppObjectInfo from './AppObjectInfo.vue';
@@ -85,7 +84,8 @@ export default {
     AppObjectInfo,
     LMap,
     LTileLayer,
-    LCircle,
+    // LCircle,
+    LGeoJson,
     LPolygon,
     LMarker,
     LPopup,
@@ -105,9 +105,12 @@ export default {
       type: Array,
       required: true,
     },
+    objectsIntersection: {
+      type: Object,
+      required: true,
+    },
     point: {
       validator(a) {
-        console.log(a);
         return Array.isArray(a) || a === null;
       },
       default: null,
@@ -123,9 +126,14 @@ export default {
       const maxSquare = Math.max(...this.sportObjects.map(({ square }) => square));
       return this.sportObjects.map((object) => ({
         id: object.id,
-        radius: object.radius,
-        center: object.center,
-        opacity: (object.square / maxSquare) * 0.4,
+        geoJson: object.geoJson,
+        style: {
+          fillOpacity: (object.square / maxSquare) * 0.6,
+          fill: true,
+          weight: 2,
+          color: 'green',
+          fillColor: 'green',
+        },
       }));
     },
     maxDensity() {
@@ -137,6 +145,14 @@ export default {
         polygon: area.points.map((item) => [item.lat, item.lng]),
         opacity: 0.1 + (area.density / this.maxDensity) * 0.4,
       }));
+    },
+    sportValueZoneStyle() {
+      return {
+        weight: 2,
+        color: '#ECEFF1',
+        opacity: 1,
+        fillOpacity: 1,
+      };
     },
   },
   methods: {

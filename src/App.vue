@@ -5,6 +5,7 @@
       :sport-objects="filteredObjects"
       :population-areas="populationAreas"
       :point="point"
+      :objects-intersection="objectsIntersection"
       :settings="mapSettings"
       @mapClick="showInfo"
     />
@@ -88,6 +89,7 @@ import lunr from 'lunr';
 import support from 'lunr-languages/lunr.stemmer.support';
 import ru from 'lunr-languages/lunr.ru';
 import multi from 'lunr-languages/lunr.multi';
+import * as turf from '@turf/turf';
 import {
   objects, owners, valueTypes, sports, zoneTypes,
 } from '../test-data/data.json';
@@ -115,14 +117,23 @@ function getRadius(type) {
   }
 }
 
-const preparedObjects = objects.map((object) => (Object.freeze({
-  ...object,
-  center: [+object.lat, +object.lng],
-  radius: getRadius(object.valueId),
-  square: object.zones.reduce((sum, zone) => sum + zone.square, 0),
-  sports: new Set(object.zones.map((zone) => zone.sports).flat()),
-  zoneTypes: new Set(object.zones.map(({ zoneType }) => zoneType)),
-})));
+const preparedObjects = objects.map((object) => {
+  const center = [+object.lat, +object.lng];
+  return (Object.freeze({
+    ...object,
+    center,
+    radius: getRadius(object.valueId),
+    geoJson: turf.circle(
+      [+object.lng, +object.lat],
+      getRadius(object.valueId) * 0.001,
+      { steps: 30 },
+    ),
+    square: object.zones.reduce((sum, zone) => sum + zone.square, 0),
+    sports: new Set(object.zones.map((zone) => zone.sports)
+      .flat()),
+    zoneTypes: new Set(object.zones.map(({ zoneType }) => zoneType)),
+  }));
+});
 
 const searchIndex = lunr(function () {
   this.use(lunr.multiLanguage('en', 'ru'));
@@ -132,10 +143,17 @@ const searchIndex = lunr(function () {
   this.field('zones');
 
   preparedObjects.forEach(({
-    id, name, address, zones,
+    id,
+    name,
+    address,
+    zones,
   }) => {
     this.add({
-      id, name, address, zones: zones.map(({ zoneName }) => zoneName).join(' '),
+      id,
+      name,
+      address,
+      zones: zones.map(({ zoneName }) => zoneName)
+        .join(' '),
     });
   });
 });
@@ -216,10 +234,18 @@ export default {
       });
     },
     owners() {
-      return Object.entries(owners).map(([id, title]) => ({ id, title }));
+      return Object.entries(owners)
+        .map(([id, title]) => ({
+          id,
+          title,
+        }));
     },
     valueTypes() {
-      return Object.entries(valueTypes).map(([id, title]) => ({ id, title }));
+      return Object.entries(valueTypes)
+        .map(([id, title]) => ({
+          id,
+          title,
+        }));
     },
     zoneTypes() {
       return zoneTypes;
@@ -229,7 +255,10 @@ export default {
     },
     populationAreas() {
       return populationAreas.map((item) => {
-        const points = item.geometry.coordinates[0].map(([lng, lat]) => ({ lat, lng }));
+        const points = item.geometry.coordinates[0].map(([lng, lat]) => ({
+          lat,
+          lng,
+        }));
         const square = L.GeometryUtil.geodesicArea(points);
         const { population } = item.properties;
         const density = population / square;
@@ -267,7 +296,23 @@ export default {
         point: this.point,
         nearObjects: this.nearObjects,
         populationArea: this.pointPopulation,
+        objectsIntersection: this.objectsIntersection,
+        area: this.objectsIntersection ? turf.area(this.objectsIntersection) : null,
       };
+    },
+    objectsIntersection() {
+      if (this.nearObjects.length === 0) {
+        return null;
+      }
+      return this.filteredObjects.reduce((result, object) => {
+        if (!result) {
+          return null;
+        }
+        if (this.nearObjects.includes(object)) {
+          return turf.intersect(result, object.geoJson);
+        }
+        return turf.difference(result, object.geoJson);
+      }, this.nearObjects[0].geoJson);
     },
   },
   methods: {
@@ -279,9 +324,10 @@ export default {
 </script>
 
 <style lang="scss">
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap');
 body {
   margin: 0;
-  font-family: sans-serif;
+  font-family: 'Roboto', sans-serif;
 }
 
 .app {
@@ -289,14 +335,14 @@ body {
   height: 100vh;
 }
 
-.app__filter-search{
+.app__filter-search {
   display: block;
   margin-top: 10px;
   padding: 10px;
   width: 100%;
   font-size: 16px;
   border-radius: 5px;
-  border: 1px solid rgba(60,60,60,.26);
+  border: 1px solid rgba(60, 60, 60, .26);
 }
 
 .app__info {
@@ -304,6 +350,7 @@ body {
   padding: 20px;
   overflow: auto;
 }
+
 .app__filter-field {
   margin-top: 10px;
 }
