@@ -134,7 +134,6 @@ const objectsMap = new Map(preparedObjects.map((item) => [item.id, item]));
 const prepareShards = shards.map((shard, index) => ({
   ...shard,
   id: index,
-  square: shard.objects.reduce((s, objectId) => s + objectsMap.get(objectId).square, 0),
 }));
 
 const searchIndex = lunr(function createIndex() {
@@ -256,7 +255,14 @@ export default {
       return sports;
     },
     shards() {
-      return prepareShards;
+      const objectIds = new Set(this.filteredObjects.map(({ id }) => id));
+      return prepareShards.filter((shard) => shard.objects.some((id) => objectIds.has(id)))
+        .map((shard) => ({
+          ...shard,
+          square: shard.objects
+            .filter((id) => objectIds.has(id))
+            .reduce((s, objectId) => s + objectsMap.get(objectId).square, 0),
+        }));
     },
     populationAreas() {
       return populationAreas.map((item) => {
