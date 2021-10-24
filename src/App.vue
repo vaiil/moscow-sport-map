@@ -4,9 +4,41 @@
       :center="center"
       :sport-objects="filteredObjects"
       :population-areas="populationAreas"
+      :point="point"
+      :settings="mapSettings"
       @mapClick="showInfo"
     />
     <div class="app__info">
+      <div class="app__toggle-bar">
+        <button
+          class="app__toggle-btn"
+          :class="{'app__toggle-btn_active': mapSettings.showPopulation}"
+          @click="mapSettings.showPopulation = !mapSettings.showPopulation"
+        >
+          Население
+        </button>
+        <button
+          class="app__toggle-btn"
+
+          :class="{'app__toggle-btn_active': mapSettings.showMarkers}"
+          @click="mapSettings.showMarkers = !mapSettings.showMarkers"
+        >
+          Объекты
+        </button>
+        <button
+          class="app__toggle-btn"
+          :class="{'app__toggle-btn_active': mapSettings.showValueZones}"
+          @click="mapSettings.showValueZones = !mapSettings.showValueZones"
+        >
+          Доступность
+        </button>
+      </div>
+      <input
+        v-model="search"
+        class="app__filter-search"
+        type="search"
+        placeholder="Поиск (по названию объекта или зоны, адресу)"
+      >
       <v-select
         v-model="filter.owners"
         class="app__filter-field"
@@ -52,13 +84,21 @@
 import vSelect from 'vue-select';
 import 'vue-select/dist/vue-select.css';
 import L from 'leaflet';
+import lunr from 'lunr';
+import support from 'lunr-languages/lunr.stemmer.support';
+import ru from 'lunr-languages/lunr.ru';
+import multi from 'lunr-languages/lunr.multi';
 import {
   objects, owners, valueTypes, sports, zoneTypes,
 } from '../test-data/data.json';
 import populationAreas from '../test-data/population_areas.json';
-import populationValues from '../test-data/population_values.json';
 import AppMap from './components/AppMap.vue';
 import AppPointInfo from './components/AppPointInfo.vue';
+import isMarkerInsidePolygon from './isPointInPolygon';
+
+support(lunr);
+ru(lunr);
+multi(lunr);
 
 function getRadius(type) {
   switch (+type) {
@@ -75,14 +115,30 @@ function getRadius(type) {
   }
 }
 
-const preparedObjects = objects.map((object) => ({
+const preparedObjects = objects.map((object) => (Object.freeze({
   ...object,
   center: [+object.lat, +object.lng],
   radius: getRadius(object.valueId),
   square: object.zones.reduce((sum, zone) => sum + zone.square, 0),
   sports: new Set(object.zones.map((zone) => zone.sports).flat()),
   zoneTypes: new Set(object.zones.map(({ zoneType }) => zoneType)),
-}));
+})));
+
+const searchIndex = lunr(function () {
+  this.use(lunr.multiLanguage('en', 'ru'));
+  this.ref('id');
+  this.field('name');
+  this.field('address');
+  this.field('zones');
+
+  preparedObjects.forEach(({
+    id, name, address, zones,
+  }) => {
+    this.add({
+      id, name, address, zones: zones.map(({ zoneName }) => zoneName).join(' '),
+    });
+  });
+});
 
 export default {
   name: 'App',
@@ -95,11 +151,17 @@ export default {
     return {
       center: [55.78, 37.48],
       point: null,
+      search: '',
       filter: {
         owners: [],
         valueTypes: [],
         zoneTypes: [],
         sports: [],
+      },
+      mapSettings: {
+        showPopulation: false,
+        showMarkers: true,
+        showValueZones: false,
       },
     };
   },
@@ -108,8 +170,28 @@ export default {
       return preparedObjects;
       // .slice(0, 10);
     },
+    searchQuery() {
+      return this.search ? this.search
+        .replace(/[,.]/g, ' ')
+        .split(' ')
+        .filter((s) => s.length > 0)
+        .map((item) => `+${item}~2`)
+        .join(' ') : null;
+    },
+    searchResults() {
+      if (!this.searchQuery) {
+        return null;
+      }
+      const searchedItems = searchIndex.search(this.searchQuery);
+      return new Set(searchedItems.map(({ ref }) => ref));
+    },
     filteredObjects() {
       return this.mapObjects.filter((item) => {
+        if (this.searchResults) {
+          if (!this.searchResults.has(item.id)) {
+            return false;
+          }
+        }
         if (this.filter.owners.length > 0) {
           if (!this.filter.owners.some((owner) => owner.id === item.ownerId)) {
             return false;
@@ -146,19 +228,19 @@ export default {
       return sports;
     },
     populationAreas() {
-      return populationAreas.map((item, index) => {
+      return populationAreas.map((item) => {
         const points = item.geometry.coordinates[0].map(([lng, lat]) => ({ lat, lng }));
         const square = L.GeometryUtil.geodesicArea(points);
-        const population = populationValues[index];
+        const { population } = item.properties;
         const density = population / square;
 
-        return {
+        return Object.freeze({
           id: item.id,
           points,
           square,
           population,
           density,
-        };
+        });
       });
     },
     nearObjects() {
@@ -169,6 +251,14 @@ export default {
         (object) => L.GeometryUtil.length([this.point, object.center]) < object.radius,
       );
     },
+    pointPopulation() {
+      if (!this.point) {
+        return null;
+      }
+      return this.populationAreas.find(
+        (populationArea) => isMarkerInsidePolygon(this.point, populationArea.points),
+      );
+    },
     pointInfo() {
       if (!this.point) {
         return null;
@@ -176,6 +266,7 @@ export default {
       return {
         point: this.point,
         nearObjects: this.nearObjects,
+        populationArea: this.pointPopulation,
       };
     },
   },
@@ -190,11 +281,22 @@ export default {
 <style lang="scss">
 body {
   margin: 0;
+  font-family: sans-serif;
 }
 
 .app {
   display: flex;
   height: 100vh;
+}
+
+.app__filter-search{
+  display: block;
+  margin-top: 10px;
+  padding: 10px;
+  width: 100%;
+  font-size: 16px;
+  border-radius: 5px;
+  border: 1px solid rgba(60,60,60,.26);
 }
 
 .app__info {
@@ -204,6 +306,24 @@ body {
 }
 .app__filter-field {
   margin-top: 10px;
+}
+
+.app__toggle-bar {
+  display: flex;
+  gap: 10px;
+}
+
+.app__toggle-btn {
+  flex: 1;
+  padding: 10px;
+  border: solid 1px #aaa;
+  border-radius: 4px;
+  background: #ffd5db;
+  cursor: pointer;
+
+  &_active {
+    background: #b9ffb9;
+  }
 }
 </style>
 <style>

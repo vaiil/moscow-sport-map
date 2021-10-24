@@ -20,13 +20,24 @@ const headers = new Map([
   ['Площадь спортзоны', 'square'],
 ]);
 
-function filter({ lat, lng }) {
+function filter({
+  lat,
+  lng
+}) {
   // eslint-disable-next-line yoda
   return (55.75 < lat && lat < 55.79) && (37.45 < lng && lng < 37.51);
 }
 
 function createObject({
-  id, name, ownerId, valueId, address, lat, lng,
+  id,
+  name,
+  ownerId,
+  ownerName,
+  valueName,
+  valueId,
+  address,
+  lat,
+  lng,
 }) {
   return {
     id,
@@ -34,6 +45,8 @@ function createObject({
     address,
     ownerId,
     valueId,
+    ownerName,
+    valueName,
     lat: +lat,
     lng: +lng,
     zones: new Map(),
@@ -41,7 +54,10 @@ function createObject({
 }
 
 function createZone({
-  zoneType, zoneId, zoneName, square,
+  zoneType,
+  zoneId,
+  zoneName,
+  square,
 }) {
   return {
     zoneType,
