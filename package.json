@@ -5,7 +5,8 @@
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint"
+    "lint": "vue-cli-service lint",
+    "convert-data": "node scripts/csv-to-json.js test-data/data.csv > test-data/data.json"
   },
   "dependencies": {
     "@turf/collect": "^6.5.0",

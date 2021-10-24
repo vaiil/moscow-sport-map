@@ -3,7 +3,6 @@
     class="app-map"
     :zoom="14"
     :center="center"
-    @click="mapClick"
   >
     <l-tile-layer
       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -26,12 +25,15 @@
         :opacity="area.opacity"
       />
     </l-layer-group>
-    <l-layer-group :visible="settings.showValueZones">
+    <l-layer-group
+      :visible="settings.showValueZones"
+    >
       <l-geo-json
-        v-for="object of sportObjectCircles"
-        :key="object.id"
-        :geojson="object.geoJson"
-        :options="{style: object.style}"
+        v-for="shard of shardsWithColor"
+        :key="shard.id"
+        :geojson="shard.geoJSON"
+        :options="{style: shard.style}"
+        @click="selectShard($event, shard)"
       />
     </l-layer-group>
     <l-layer-group :visible="settings.showMarkers">
@@ -50,8 +52,8 @@
       </l-marker>
     </l-layer-group>
     <l-geo-json
-      v-if="objectsIntersection"
-      :geojson="objectsIntersection"
+      v-if="selectedShard"
+      :geojson="selectedShard.geoJSON"
     />
     <l-marker
       v-if="point"
@@ -105,15 +107,15 @@ export default {
       type: Array,
       required: true,
     },
-    objectsIntersection: {
-      type: Object,
-      required: true,
-    },
     point: {
       validator(a) {
         return Array.isArray(a) || a === null;
       },
       default: null,
+    },
+    shards: {
+      type: Array,
+      required: true,
     },
     settings: {
       type: Object,
@@ -121,20 +123,29 @@ export default {
     },
   },
   emits: ['mapClick'],
+  data() {
+    return {
+      selectedShard: null,
+    };
+  },
   computed: {
-    sportObjectCircles() {
-      const maxSquare = Math.max(...this.sportObjects.map(({ square }) => square));
-      return this.sportObjects.map((object) => ({
-        id: object.id,
-        geoJson: object.geoJson,
-        style: {
-          fillOpacity: (object.square / maxSquare) * 0.6,
-          fill: true,
-          weight: 2,
-          color: 'green',
-          fillColor: 'green',
-        },
-      }));
+    maxShardSquare() {
+      return Math.max(...this.shards.map(({ square }) => square));
+    },
+    shardsWithColor() {
+      return this.shards.map((shard) => {
+        const part = (shard.square / this.maxShardSquare) * 255;
+        return ({
+          ...shard,
+          style: {
+            fill: true,
+            weight: 2,
+            color: 'green',
+            fillOpacity: 0.5,
+            fillColor: `rgb(${255 - part}, ${part}, 0)`,
+          },
+        });
+      });
     },
     maxDensity() {
       return Math.max(...this.populationAreas.map(({ density }) => density));
@@ -156,10 +167,9 @@ export default {
     },
   },
   methods: {
-    mapClick(e) {
-      if (e.latlng) {
-        this.$emit('mapClick', e);
-      }
+    selectShard(event, shard) {
+      this.selectedShard = shard;
+      this.$emit('mapClick', event);
     },
   },
 };

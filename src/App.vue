@@ -5,8 +5,8 @@
       :sport-objects="filteredObjects"
       :population-areas="populationAreas"
       :point="point"
-      :objects-intersection="objectsIntersection"
       :settings="mapSettings"
+      :shards="shards"
       @mapClick="showInfo"
     />
     <div class="app__info">
@@ -89,9 +89,8 @@ import lunr from 'lunr';
 import support from 'lunr-languages/lunr.stemmer.support';
 import ru from 'lunr-languages/lunr.ru';
 import multi from 'lunr-languages/lunr.multi';
-import * as turf from '@turf/turf';
 import {
-  objects, owners, valueTypes, sports, zoneTypes,
+  objects, owners, valueTypes, sports, zoneTypes, shards,
 } from '../test-data/data.json';
 import populationAreas from '../test-data/population_areas.json';
 import AppMap from './components/AppMap.vue';
@@ -123,11 +122,6 @@ const preparedObjects = objects.map((object) => {
     ...object,
     center,
     radius: getRadius(object.valueId),
-    geoJson: turf.circle(
-      [+object.lng, +object.lat],
-      getRadius(object.valueId) * 0.001,
-      { steps: 30 },
-    ),
     square: object.zones.reduce((sum, zone) => sum + zone.square, 0),
     sports: new Set(object.zones.map((zone) => zone.sports)
       .flat()),
@@ -135,7 +129,15 @@ const preparedObjects = objects.map((object) => {
   }));
 });
 
-const searchIndex = lunr(function () {
+const objectsMap = new Map(preparedObjects.map((item) => [item.id, item]));
+
+const prepareShards = shards.map((shard, index) => ({
+  ...shard,
+  id: index,
+  square: shard.objects.reduce((s, objectId) => s + objectsMap.get(objectId).square, 0),
+}));
+
+const searchIndex = lunr(function createIndex() {
   this.use(lunr.multiLanguage('en', 'ru'));
   this.ref('id');
   this.field('name');
@@ -253,6 +255,9 @@ export default {
     sports() {
       return sports;
     },
+    shards() {
+      return prepareShards;
+    },
     populationAreas() {
       return populationAreas.map((item) => {
         const points = item.geometry.coordinates[0].map(([lng, lat]) => ({
@@ -296,23 +301,8 @@ export default {
         point: this.point,
         nearObjects: this.nearObjects,
         populationArea: this.pointPopulation,
-        objectsIntersection: this.objectsIntersection,
-        area: this.objectsIntersection ? turf.area(this.objectsIntersection) : null,
+        area: null,
       };
-    },
-    objectsIntersection() {
-      if (this.nearObjects.length === 0) {
-        return null;
-      }
-      return this.filteredObjects.reduce((result, object) => {
-        if (!result) {
-          return null;
-        }
-        if (this.nearObjects.includes(object)) {
-          return turf.intersect(result, object.geoJson);
-        }
-        return turf.difference(result, object.geoJson);
-      }, this.nearObjects[0].geoJson);
     },
   },
   methods: {

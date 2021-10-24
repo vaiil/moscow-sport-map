@@ -1,24 +1,30 @@
-# moscow-sport-map-app
+# Moscow Sport Map
 
-## Project setup
+## Установка
 ```
-yarn install
-```
-
-### Compiles and hot-reloads for development
-```
-yarn serve
+npm i
 ```
 
-### Compiles and minifies for production
+### Запуск для разработки
 ```
-yarn build
+npm run serve
 ```
 
-### Lints and fixes files
+### Компиляция
 ```
-yarn lint
+npm run build
 ```
+
+### Линтинг
+```
+npm run lint
+```
+
+### Собрать csv в json
+```
+npm run convert-data
+```
+
 
 ### Customize configuration
 See [Configuration Reference](https://cli.vuejs.org/config/).
