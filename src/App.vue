@@ -262,7 +262,8 @@ export default {
           square: shard.objects
             .filter((id) => objectIds.has(id))
             .reduce((s, objectId) => s + objectsMap.get(objectId).square, 0),
-        }));
+        }))
+        .filter(({ density }) => density > 0);
     },
     populationAreas() {
       return populationAreas.map((item) => {

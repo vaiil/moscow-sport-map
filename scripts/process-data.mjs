@@ -1,6 +1,13 @@
-const fs = require('fs');
-const csv = require('csv-parser');
-const turf = require('@turf/turf');
+import fs from 'fs';
+import fsPromises from 'fs/promises';
+import csv from 'csv-parser';
+import * as turf from '@turf/turf';
+import arg from 'arg';
+
+const args = arg({
+  '--objects-csv-file': String,
+  '--population-geo-json-file': String,
+});
 
 const results = [];
 
@@ -20,6 +27,30 @@ const headers = new Map([
   ['Долгота (Longitude)', 'lng'],
   ['Площадь спортзоны', 'square'],
 ]);
+
+async function processPopulationData(fileName) {
+  const populationFileContent = await fsPromises.readFile(fileName);
+
+  const populationData = JSON.parse(populationFileContent.toString());
+
+  return Object.fromEntries(
+    populationData
+      .map(item => {
+        const area = turf.area(item)
+        const population = item.properties.population
+        return ({
+          id: item.id,
+          population,
+          area,
+          density: population / area,
+          geoJSON: item
+        });
+      })
+      .map(item => [item.id, item])
+  );
+}
+
+const populationsMap = await processPopulationData(args['--population-geo-json-file']);
 
 function filter({
   lat,
@@ -154,6 +185,49 @@ function calculateIntersections(inputObjects) {
   return shards;
 }
 
+function mapShardsToPopulation(shards, populations) {
+  if (populations.length === 0) {
+    return shards.map(shard => ({
+      ...shard,
+      populationId: null,
+      density: null
+    }));
+  }
+  const allPopulationRegions = populations.reduce((region, item) => turf.union(region, item.geoJSON), populations[0].geoJSON);
+  const result = [];
+  for (const shard of shards) {
+    for (const population of populations) {
+      const intersect = turf.intersect(population.geoJSON, shard.geoJSON)
+      if(intersect){
+        result.push({
+          ...shard,
+          geoJSON: intersect,
+          populationId: population.id,
+          density: population.density,
+        })
+      }
+    }
+
+    const rest = turf.difference(shard.geoJSON, allPopulationRegions)
+    if(rest){
+      result.push({
+        ...shard,
+        geoJSON: rest,
+        populationId: null,
+        density: null
+      })
+    }
+  }
+  return result
+}
+
+function calculateSquares(shards){
+  return shards.map(shard => ({
+    ...shard,
+    area: turf.area(shard.geoJSON)
+  }))
+}
+
 function processItems(lines) {
   const objectMap = new Map();
   const owners = new Map();
@@ -193,11 +267,17 @@ function processItems(lines) {
     sports: Array.from(sports.values()),
     zoneTypes: Array.from(zoneTypes.values()),
     objects,
-    shards: calculateIntersections(objects),
+    shards: calculateSquares(
+      mapShardsToPopulation(
+        calculateIntersections(objects),
+        Array.from(Object.values(populationsMap))
+      )
+    ),
+    populations: populationsMap
   };
 }
 
-fs.createReadStream(process.argv[2])
+fs.createReadStream(args['--objects-csv-file'])
   .pipe(csv({
     mapHeaders: ({ header }) => headers.get(header),
   }))

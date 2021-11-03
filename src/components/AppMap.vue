@@ -129,19 +129,24 @@ export default {
     };
   },
   computed: {
+    minShardSquare() {
+      return Math.min(...this.shards.map(({ square, density }) => (square)
+        / (density)));
+    },
     maxShardSquare() {
-      return Math.max(...this.shards.map(({ square }) => square));
+      return Math.max(...this.shards.map(({ square, density }) => (square) / density));
     },
     shardsWithColor() {
       return this.shards.map((shard) => {
-        const part = (shard.square / this.maxShardSquare) * 255;
+        const part = (((shard.square - this.minShardSquare)
+          / (this.maxShardSquare * shard.density))) * 255;
         return ({
           ...shard,
           style: {
             fill: true,
             weight: 2,
             color: 'green',
-            fillOpacity: 0.5,
+            fillOpacity: part > 0 ? 0.5 : 0,
             fillColor: `rgb(${255 - part}, ${part}, 0)`,
           },
         });
