@@ -89,6 +89,7 @@ import lunr from 'lunr';
 import support from 'lunr-languages/lunr.stemmer.support';
 import ru from 'lunr-languages/lunr.ru';
 import multi from 'lunr-languages/lunr.multi';
+import * as turf from '@turf/turf';
 import {
   objects, owners, valueTypes, sports, zoneTypes, shards,
 } from '../test-data/data.json';
@@ -256,14 +257,34 @@ export default {
     },
     shards() {
       const objectIds = new Set(this.filteredObjects.map(({ id }) => id));
-      return prepareShards.filter((shard) => shard.objects.some((id) => objectIds.has(id)))
-        .map((shard) => ({
-          ...shard,
-          square: shard.objects
-            .filter((id) => objectIds.has(id))
-            .reduce((s, objectId) => s + objectsMap.get(objectId).square, 0),
-        }))
+      const filteredShards = prepareShards
+        .filter((shard) => shard.objects.some((id) => objectIds.has(id)))
+        .map((shard) => {
+          const shardObjects = shard.objects.filter((id) => objectIds.has(id));
+          return ({
+            ...shard,
+            key: `${shardObjects.join('-')}-${shard.populationId}`,
+            objects: shardObjects,
+            square: shardObjects
+              .reduce((s, objectId) => s + objectsMap.get(objectId).square, 0),
+          });
+        })
         .filter(({ density }) => density > 0);
+
+      const shardMap = {};
+      // eslint-disable-next-line no-restricted-syntax
+      for (const shard of filteredShards) {
+        if (shardMap[shard.key]) {
+          try {
+            shardMap[shard.key].geoJSON = turf.union(shardMap[shard.key].geoJSON, shard.geoJSON);
+          } catch (e) {
+            //
+          }
+        } else {
+          shardMap[shard.key] = shard;
+        }
+      }
+      return Array.from(Object.values(shardMap));
     },
     populationAreas() {
       return populationAreas.map((item) => {
