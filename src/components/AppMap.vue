@@ -156,19 +156,15 @@ export default {
     };
   },
   computed: {
-    minShardSquare() {
-      return Math.min(...this.shards.map(({ square, density }) => (square)
-        / (density)));
-    },
-    maxShardSquare() {
-      return Math.max(...this.shards
-        .filter(({ density }) => density > 0)
-        .map(({ square, density }) => (square) / density));
+    shardValues() {
+      return this.shards.map((shard) => this.calculateValueForColor(shard));
     },
     shardsWithColor() {
-      return this.shards.map((shard) => {
-        const part = (((shard.square / shard.density - this.minShardSquare)
-          / this.maxShardSquare)) * 255;
+      const min = Math.min(...this.shardValues);
+      const max = Math.max(...this.shardValues.filter((item) => Number.isFinite(item)));
+      return this.shards.map((shard, index) => {
+        const value = this.shardValues[index];
+        const part = ((value - min) / max) * 255;
         return ({
           ...shard,
           options: {
@@ -219,6 +215,13 @@ export default {
     },
   },
   methods: {
+    calculateValueForColor(shard) {
+      let { square } = shard;
+      if (this.settings.calculateDensity) {
+        square /= shard.density;
+      }
+      return square;
+    },
     setItemRef(el) {
       if (el?.leafletObject?.options) {
         this.shardRefs[el.leafletObject.options.geojson.properties.id] = el;

@@ -35,6 +35,14 @@
           Доступность
         </button>
       </div>
+      <div v-if="mapSettings.showValueZones">
+        <label>
+          <input
+            v-model="mapSettings.calculateDensity"
+            type="checkbox"
+          > Расчет цветов с учетом плотности населения
+        </label>
+      </div>
       <input
         v-model="search"
         class="app__filter-search"
@@ -189,6 +197,7 @@ export default {
         showPopulation: false,
         showMarkers: true,
         showValueZones: false,
+        calculateDensity: false,
       },
       selectedArea: null,
     };
@@ -307,6 +316,9 @@ export default {
         this.pointInfo = null;
       },
       deep: true,
+    },
+    'mapSettings.showValueZones': function () {
+      this.pointInfo = null;
     },
   },
   methods: {
