@@ -36,8 +36,8 @@ async function processPopulationData(fileName) {
   return Object.fromEntries(
     populationData
       .map(item => {
-        const area = turf.area(item)
-        const population = item.properties.population
+        const area = turf.area(item);
+        const population = item.properties.population;
         return ({
           id: item.id,
           population,
@@ -116,10 +116,11 @@ function createZone({
   };
 }
 
-function createShard(geoJSON, object) {
+function createShard(geoJSON, object, excludes = []) {
   return {
     geoJSON,
     objects: [object.id],
+    excludes: excludes
   };
 }
 
@@ -131,6 +132,7 @@ function intersect(shard, object) {
   return {
     geoJSON: intersection,
     objects: [...shard.objects, object.id],
+    excludes: shard.excludes
   };
 }
 
@@ -142,6 +144,7 @@ function diff(shard, object) {
   return {
     geoJSON: difference,
     objects: shard.objects,
+    excludes: [...shard.excludes, object.id]
   };
 }
 
@@ -150,6 +153,7 @@ function calculateIntersections(inputObjects) {
   const firstObject = objects.shift();
   let shards = [createShard(firstObject.geoJSON, firstObject)];
   let union = firstObject.geoJSON;
+  const previous = []
   for (const object of objects) {
     const newShards = [];
     for (const shard of shards) {
@@ -168,7 +172,12 @@ function calculateIntersections(inputObjects) {
 
     const rest = turf.difference(object.geoJSON, union);
     if (rest) {
-      newShards.push(createShard(rest, object));
+      newShards.push(createShard(rest, object, previous
+        .filter(prev => {
+          return turf.intersect(object.geoJSON, prev.geoJSON) !== null
+        })
+        .map(item => item.id)
+      ));
     }
     shards = newShards.map((shard) => {
       const flatten = turf.flatten(shard.geoJSON);
@@ -180,9 +189,22 @@ function calculateIntersections(inputObjects) {
       .flat();
 
     union = turf.union(union, object.geoJSON);
+    previous.push(object)
   }
 
   return shards;
+}
+
+function flattenShards(shards){
+  return shards.reduce((result, item) => {
+    const collection = turf.flatten(item.geoJSON);
+    return result.concat(collection.features.map(feature => {
+      return {
+        ...item,
+        geoJSON: feature
+      }
+    }))
+  }, []);
 }
 
 function mapShardsToPopulation(shards, populations) {
@@ -197,35 +219,35 @@ function mapShardsToPopulation(shards, populations) {
   const result = [];
   for (const shard of shards) {
     for (const population of populations) {
-      const intersect = turf.intersect(population.geoJSON, shard.geoJSON)
-      if(intersect){
+      const intersect = turf.intersect(population.geoJSON, shard.geoJSON);
+      if (intersect) {
         result.push({
           ...shard,
           geoJSON: intersect,
           populationId: population.id,
           density: population.density,
-        })
+        });
       }
     }
 
-    const rest = turf.difference(shard.geoJSON, allPopulationRegions)
-    if(rest){
+    const rest = turf.difference(shard.geoJSON, allPopulationRegions);
+    if (rest) {
       result.push({
         ...shard,
         geoJSON: rest,
         populationId: null,
         density: null
-      })
+      });
     }
   }
-  return result
+  return result;
 }
 
-function calculateSquares(shards){
+function calculateSquares(shards) {
   return shards.map(shard => ({
     ...shard,
     area: turf.area(shard.geoJSON)
-  }))
+  }));
 }
 
 function processItems(lines) {
@@ -268,9 +290,11 @@ function processItems(lines) {
     zoneTypes: Array.from(zoneTypes.values()),
     objects,
     shards: calculateSquares(
-      mapShardsToPopulation(
-        calculateIntersections(objects),
-        Array.from(Object.values(populationsMap))
+      flattenShards(
+        mapShardsToPopulation(
+          calculateIntersections(objects),
+          Array.from(Object.values(populationsMap))
+        )
       )
     ),
     populations: populationsMap

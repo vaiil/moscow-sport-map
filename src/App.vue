@@ -89,7 +89,6 @@ import lunr from 'lunr';
 import support from 'lunr-languages/lunr.stemmer.support';
 import ru from 'lunr-languages/lunr.ru';
 import multi from 'lunr-languages/lunr.multi';
-import * as turf from '@turf/turf';
 import {
   objects, owners, valueTypes, sports, zoneTypes, shards,
 } from '../test-data/data.json';
@@ -134,6 +133,12 @@ const objectsMap = new Map(preparedObjects.map((item) => [item.id, item]));
 
 const prepareShards = shards.map((shard, index) => ({
   ...shard,
+  geoJSON: {
+    ...shard.geoJSON,
+    properties: {
+      id: index,
+    },
+  },
   id: index,
 }));
 
@@ -257,35 +262,78 @@ export default {
     },
     shards() {
       const objectIds = new Set(this.filteredObjects.map(({ id }) => id));
-      const filteredShards = prepareShards
+
+      return prepareShards
         .filter((shard) => shard.objects.some((id) => objectIds.has(id)))
         .map((shard) => {
           const shardObjects = shard.objects.filter((id) => objectIds.has(id));
+          const excludes = shard.excludes.filter((id) => objectIds.has(id));
           return ({
             ...shard,
-            key: `${shardObjects.join('-')}-${shard.populationId}`,
+            key: `${shard.id}-${shardObjects.join('-')}-${shard.populationId}`,
             objects: shardObjects,
+            excludes,
             square: shardObjects
               .reduce((s, objectId) => s + objectsMap.get(objectId).square, 0),
           });
-        })
-        .filter(({ density }) => density > 0);
-
-      const shardMap = {};
-      // eslint-disable-next-line no-restricted-syntax
-      for (const shard of filteredShards) {
-        if (shardMap[shard.key]) {
-          try {
-            shardMap[shard.key].geoJSON = turf.union(shardMap[shard.key].geoJSON, shard.geoJSON);
-          } catch (e) {
-            //
-          }
-        } else {
-          shardMap[shard.key] = shard;
-        }
-      }
-      return Array.from(Object.values(shardMap));
+        });
     },
+    // shards() {
+    //   const objectIds = new Set(this.filteredObjects.map(({ id }) => id));
+    //
+    //   const filteredShards = prepareShards
+    //     .filter((shard) => shard.objects.some((id) => objectIds.has(id)))
+    //     .map((shard) => {
+    //       const shardObjects = shard.objects.filter((id) => objectIds.has(id));
+    //       const excludes = shard.excludes.filter((id) => objectIds.has(id));
+    //       return ({
+    //         ...shard,
+    //         key: `${shardObjects.join('-')}-${shard.populationId}`,
+    //         objects: shardObjects,
+    //         excludes,
+    //         square: shardObjects
+    //           .reduce((s, objectId) => s + objectsMap.get(objectId).square, 0),
+    //       });
+    //     })
+    //     .filter(({ density }) => density > 0);
+    //
+    //   const shardMap = {};
+    //   // eslint-disable-next-line no-restricted-syntax
+    //   for (const shard of filteredShards) {
+    //     if (shardMap[shard.key]) {
+    //       shardMap[shard.key].excludes.push(...shard.excludes);
+    //     } else {
+    //       shardMap[shard.key] = shard;
+    //     }
+    //   }
+    //   console.log(shardMap);
+    //   return Array.from(Object.values(shardMap)).map((item) => {
+    //     let geoJSON = item.objects.reduce((result, id) => turf.intersect(
+    //       result, objectsMap.get(id).geoJSON,
+    //     ),
+    //     objectsMap.get(item.objects[0]).geoJSON);
+    //
+    //     if (item.populationId !== null) {
+    //       geoJSON = turf.intersect(geoJSON, populations[item.populationId].geoJSON);
+    //     }
+    //     if (item.excludes.length) {
+    //       const excludes = Array.from(new Set(item.excludes));
+    //
+    //       const exclude = Array.from(new Set(item.excludes))
+    //         .reduce(
+    //           (result, excludeId) => turf.union(result, objectsMap.get(excludeId).geoJSON),
+    //           objectsMap.get(excludes[0]).geoJSON,
+    //         );
+    //
+    //       geoJSON = turf.difference(geoJSON, exclude);
+    //     }
+    //
+    //     return ({
+    //       ...item,
+    //       geoJSON,
+    //     });
+    //   });
+    // },
     populationAreas() {
       return populationAreas.map((item) => {
         const points = item.geometry.coordinates[0].map(([lng, lat]) => ({

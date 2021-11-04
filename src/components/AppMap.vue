@@ -28,12 +28,37 @@
     <l-layer-group
       :visible="settings.showValueZones"
     >
+      <l-polygon
+        v-for="area of areas"
+        :key="area.id"
+        :lat-lngs="area.polygon"
+        :fill="false"
+        :stroke="true"
+        color="darkred"
+        :weight="2"
+      />
+    </l-layer-group>
+    <l-layer-group
+      :visible="settings.showValueZones"
+    >
       <l-geo-json
         v-for="shard of shardsWithColor"
+        :ref="setItemRef"
         :key="shard.id"
         :geojson="shard.geoJSON"
-        :options="{style: shard.style}"
+        :options="shard.options"
+
         @click="selectShard($event, shard)"
+      />
+    </l-layer-group>
+    <l-layer-group
+      :visible="settings.showValueZones"
+    >
+      <l-geo-json
+        v-for="object of sportObjects"
+        :key="object.id"
+        :geojson="object.geoJSON"
+        :options="{style: sportValueZoneStyle, interactive: false}"
       />
     </l-layer-group>
     <l-layer-group :visible="settings.showMarkers">
@@ -126,6 +151,7 @@ export default {
   data() {
     return {
       selectedShard: null,
+      shardRefs: {},
     };
   },
   computed: {
@@ -134,7 +160,9 @@ export default {
         / (density)));
     },
     maxShardSquare() {
-      return Math.max(...this.shards.map(({ square, density }) => (square) / density));
+      return Math.max(...this.shards
+        .filter(({ density }) => density > 0)
+        .map(({ square, density }) => (square) / density));
     },
     shardsWithColor() {
       return this.shards.map((shard) => {
@@ -142,12 +170,14 @@ export default {
           / (this.maxShardSquare * shard.density))) * 255;
         return ({
           ...shard,
-          style: {
-            fill: true,
-            weight: 2,
-            color: 'green',
-            fillOpacity: part > 0 ? 0.5 : 0,
-            fillColor: `rgb(${255 - part}, ${part}, 0)`,
+          options: {
+            style: {
+              fill: true,
+              weight: 0,
+              color: 'green',
+              fillOpacity: 0.5,
+              fillColor: `rgb(${255 - part}, ${part}, 0)`,
+            },
           },
         });
       });
@@ -165,13 +195,34 @@ export default {
     sportValueZoneStyle() {
       return {
         weight: 2,
-        color: '#ECEFF1',
+        color: '#345b28',
         opacity: 1,
-        fillOpacity: 1,
+        fillOpacity: 0,
       };
     },
   },
+  watch: {
+    shardsWithColor: {
+      immediate: true,
+      handler(value) {
+        // eslint-disable-next-line no-restricted-syntax
+        for (const item of value) {
+          const shardEl = this.shardRefs[item.id];
+          if (!shardEl) {
+            // eslint-disable-next-line no-continue
+            continue;
+          }
+          shardEl.leafletObject.setStyle(item.options.style);
+        }
+      },
+    },
+  },
   methods: {
+    setItemRef(el) {
+      if (el?.leafletObject?.options) {
+        this.shardRefs[el.leafletObject.options.geojson.properties.id] = el;
+      }
+    },
     selectShard(event, shard) {
       this.selectedShard = shard;
       this.$emit('mapClick', event);
