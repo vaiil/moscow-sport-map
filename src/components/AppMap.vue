@@ -48,7 +48,7 @@
         :geojson="shard.geoJSON"
         :options="shard.options"
 
-        @click="selectShard($event, shard)"
+        @click="selectShard($event, shard.id)"
       />
     </l-layer-group>
     <l-layer-group
@@ -78,7 +78,7 @@
     </l-layer-group>
     <l-geo-json
       v-if="selectedShard"
-      :geojson="selectedShard.geoJSON"
+      :geojson="selectedShard"
     />
     <l-marker
       v-if="point"
@@ -132,10 +132,12 @@ export default {
       type: Array,
       required: true,
     },
+    selectedShard: {
+      type: Object,
+      default: null,
+    },
     point: {
-      validator(a) {
-        return Array.isArray(a) || a === null;
-      },
+      type: Object,
       default: null,
     },
     shards: {
@@ -150,7 +152,6 @@ export default {
   emits: ['mapClick'],
   data() {
     return {
-      selectedShard: null,
       shardRefs: {},
     };
   },
@@ -166,8 +167,8 @@ export default {
     },
     shardsWithColor() {
       return this.shards.map((shard) => {
-        const part = (((shard.square - this.minShardSquare)
-          / (this.maxShardSquare * shard.density))) * 255;
+        const part = (((shard.square / shard.density - this.minShardSquare)
+          / this.maxShardSquare)) * 255;
         return ({
           ...shard,
           options: {
@@ -223,9 +224,13 @@ export default {
         this.shardRefs[el.leafletObject.options.geojson.properties.id] = el;
       }
     },
-    selectShard(event, shard) {
-      this.selectedShard = shard;
-      this.$emit('mapClick', event);
+    selectShard(event, shardId) {
+      if (event.latlng) {
+        this.$emit('mapClick', {
+          point: event.latlng,
+          shardId,
+        });
+      }
     },
   },
 };

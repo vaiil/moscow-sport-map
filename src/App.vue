@@ -4,9 +4,10 @@
       :center="center"
       :sport-objects="filteredObjects"
       :population-areas="populationAreas"
-      :point="point"
+      :point="pointInfo?.point"
       :settings="mapSettings"
       :shards="shards"
+      :selected-shard="pointInfo?.selectedShard"
       @mapClick="showInfo"
     />
     <div class="app__info">
@@ -89,13 +90,14 @@ import lunr from 'lunr';
 import support from 'lunr-languages/lunr.stemmer.support';
 import ru from 'lunr-languages/lunr.ru';
 import multi from 'lunr-languages/lunr.multi';
+import * as turf from '@turf/turf';
 import {
-  objects, owners, valueTypes, sports, zoneTypes, shards,
+  objects, owners, valueTypes, sports, zoneTypes, shards, populations,
 } from '../test-data/data.json';
 import populationAreas from '../test-data/population_areas.json';
 import AppMap from './components/AppMap.vue';
 import AppPointInfo from './components/AppPointInfo.vue';
-import isMarkerInsidePolygon from './isPointInPolygon';
+// import uniqueItems from './helpers/unique-items';
 
 support(lunr);
 ru(lunr);
@@ -136,10 +138,10 @@ const prepareShards = shards.map((shard, index) => ({
   geoJSON: {
     ...shard.geoJSON,
     properties: {
-      id: index,
+      id: index + 1,
     },
   },
-  id: index,
+  id: index + 1,
 }));
 
 const searchIndex = lunr(function createIndex() {
@@ -175,7 +177,7 @@ export default {
   data() {
     return {
       center: [55.78, 37.48],
-      point: null,
+      pointInfo: null,
       search: '',
       filter: {
         owners: [],
@@ -188,6 +190,7 @@ export default {
         showMarkers: true,
         showValueZones: false,
       },
+      selectedArea: null,
     };
   },
   computed: {
@@ -270,7 +273,7 @@ export default {
           const excludes = shard.excludes.filter((id) => objectIds.has(id));
           return ({
             ...shard,
-            key: `${shard.id}-${shardObjects.join('-')}-${shard.populationId}`,
+            key: `${shardObjects.join('-')}-${shard.populationId}`,
             objects: shardObjects,
             excludes,
             square: shardObjects
@@ -278,62 +281,6 @@ export default {
           });
         });
     },
-    // shards() {
-    //   const objectIds = new Set(this.filteredObjects.map(({ id }) => id));
-    //
-    //   const filteredShards = prepareShards
-    //     .filter((shard) => shard.objects.some((id) => objectIds.has(id)))
-    //     .map((shard) => {
-    //       const shardObjects = shard.objects.filter((id) => objectIds.has(id));
-    //       const excludes = shard.excludes.filter((id) => objectIds.has(id));
-    //       return ({
-    //         ...shard,
-    //         key: `${shardObjects.join('-')}-${shard.populationId}`,
-    //         objects: shardObjects,
-    //         excludes,
-    //         square: shardObjects
-    //           .reduce((s, objectId) => s + objectsMap.get(objectId).square, 0),
-    //       });
-    //     })
-    //     .filter(({ density }) => density > 0);
-    //
-    //   const shardMap = {};
-    //   // eslint-disable-next-line no-restricted-syntax
-    //   for (const shard of filteredShards) {
-    //     if (shardMap[shard.key]) {
-    //       shardMap[shard.key].excludes.push(...shard.excludes);
-    //     } else {
-    //       shardMap[shard.key] = shard;
-    //     }
-    //   }
-    //   console.log(shardMap);
-    //   return Array.from(Object.values(shardMap)).map((item) => {
-    //     let geoJSON = item.objects.reduce((result, id) => turf.intersect(
-    //       result, objectsMap.get(id).geoJSON,
-    //     ),
-    //     objectsMap.get(item.objects[0]).geoJSON);
-    //
-    //     if (item.populationId !== null) {
-    //       geoJSON = turf.intersect(geoJSON, populations[item.populationId].geoJSON);
-    //     }
-    //     if (item.excludes.length) {
-    //       const excludes = Array.from(new Set(item.excludes));
-    //
-    //       const exclude = Array.from(new Set(item.excludes))
-    //         .reduce(
-    //           (result, excludeId) => turf.union(result, objectsMap.get(excludeId).geoJSON),
-    //           objectsMap.get(excludes[0]).geoJSON,
-    //         );
-    //
-    //       geoJSON = turf.difference(geoJSON, exclude);
-    //     }
-    //
-    //     return ({
-    //       ...item,
-    //       geoJSON,
-    //     });
-    //   });
-    // },
     populationAreas() {
       return populationAreas.map((item) => {
         const points = item.geometry.coordinates[0].map(([lng, lat]) => ({
@@ -353,37 +300,58 @@ export default {
         });
       });
     },
-    nearObjects() {
-      if (!this.point) {
-        return [];
-      }
-      return this.filteredObjects.filter(
-        (object) => L.GeometryUtil.length([this.point, object.center]) < object.radius,
-      );
-    },
-    pointPopulation() {
-      if (!this.point) {
-        return null;
-      }
-      return this.populationAreas.find(
-        (populationArea) => isMarkerInsidePolygon(this.point, populationArea.points),
-      );
-    },
-    pointInfo() {
-      if (!this.point) {
-        return null;
-      }
-      return {
-        point: this.point,
-        nearObjects: this.nearObjects,
-        populationArea: this.pointPopulation,
-        area: null,
-      };
+  },
+  watch: {
+    filter: {
+      handler() {
+        this.pointInfo = null;
+      },
+      deep: true,
     },
   },
   methods: {
-    showInfo(e) {
-      this.point = e.latlng;
+    showInfo({ point, shardId }) {
+      const shard = this.shards.find(({ id }) => id === shardId);
+
+      let geoJSON = shard.objects
+        .reduce(
+          (result, id) => turf.intersect(
+            result, objectsMap.get(id).geoJSON,
+          ),
+          objectsMap.get(shard.objects[0]).geoJSON,
+        );
+
+      if (shard.populationId !== null) {
+        geoJSON = turf.intersect(geoJSON, populations[shard.populationId].geoJSON);
+      } else {
+        geoJSON = Array.from(Object.values(populations))
+          .reduce((result, population) => turf.difference(result, population.geoJSON), geoJSON);
+      }
+
+      const excludes = this.filteredObjects.filter(({ id }) => !shard.objects.includes(id));
+      if (excludes.length) {
+        const excludeRegion = excludes
+          .reduce(
+            (result, exclude) => turf.union(result, exclude.geoJSON),
+            excludes[0].geoJSON,
+          );
+        if (excludeRegion) {
+          geoJSON = turf.difference(geoJSON, excludeRegion);
+        }
+      }
+
+      const collection = turf.flatten(geoJSON);
+
+      const selectedShard = collection.features
+        .find((feature) => turf.inside([point.lng, point.lat], feature));
+
+      this.pointInfo = {
+        point,
+        selectedShard,
+        area: selectedShard ? turf.area(selectedShard) : null,
+        nearObjects: shard.objects.map((objectId) => objectsMap.get(objectId)),
+        populationArea: shard.populationId !== null ? populations[shard.populationId] : null,
+      };
     },
   },
 };
