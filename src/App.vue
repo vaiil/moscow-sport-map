@@ -12,6 +12,9 @@
       @mapClick="showInfo"
     />
     <div class="app__info">
+      <div class="app__heading">
+        Выбор слоя
+      </div>
       <div class="app__toggle-bar">
         <button
           class="app__toggle-btn"
@@ -36,14 +39,10 @@
           Доступность
         </button>
       </div>
-      <div v-if="mapSettings.showValueZones">
-        <label>
-          <input
-            v-model="colorCalculationSettings.calculateDensity"
-            type="checkbox"
-          > Расчет цветов с учетом плотности населения
-        </label>
-
+      <div
+        v-if="mapSettings.showValueZones"
+        class="app__shard-color-settings"
+      >
         <v-select
           v-model="colorCalculationSettings.calculateType"
           class="app__filter-field"
@@ -51,11 +50,20 @@
           label="title"
           placeholder="Расчет цветов по"
         />
+        <label>
+          <input
+            v-model="colorCalculationSettings.calculateDensity"
+            type="checkbox"
+          > Расчет цветов с учетом плотности населения
+        </label>
         <app-gradient-info
           class="app__gradient-info"
           :start-value="shardMinColorValue"
           :end-value="shardMaxColorValue"
         />
+      </div>
+      <div class="app__heading">
+        Поиск и фильтрация
       </div>
       <input
         v-model="search"
@@ -95,11 +103,24 @@
         multiple
         placeholder="Виды зон"
       />
-      <hr>
-      <AppPointInfo
-        v-if="pointInfo"
-        :point-info="pointInfo"
-      />
+      <div v-if="pointInfo">
+        <div class="app__heading">
+          Информация о пересечении
+        </div>
+        <button
+          class="app__download"
+          @click="downloadXlsxReport"
+        >
+          <img
+            src="@/assets/excel.svg"
+            alt=""
+          >
+          Скачать Excel отчет
+        </button>
+        <AppPointInfo
+          :point-info="pointInfo"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -119,6 +140,8 @@ import AppMap from './components/AppMap.vue';
 import AppPointInfo from './components/AppPointInfo.vue';
 import uniqueItems from './helpers/unique-items';
 import AppGradientInfo from './components/AppGradientInfo.vue';
+import makeXlsxReport from './services/make-xlsx-report';
+import calculateIndicators from './services/calculate-indicators';
 
 support(lunr);
 ru(lunr);
@@ -335,6 +358,9 @@ export default {
     populationAreas() {
       return Array.from(Object.values(populations));
     },
+    indicators() {
+      return this.pointInfo ? calculateIndicators(this.pointInfo) : null;
+    },
   },
   watch: {
     filter: {
@@ -419,15 +445,30 @@ export default {
       }
       return value;
     },
+    downloadXlsxReport() {
+      if (this.indicators && this.pointInfo) {
+        makeXlsxReport({ indicators: this.indicators, nearObjects: this.pointInfo.nearObjects });
+      }
+    },
   },
 };
 </script>
 
 <style lang="scss">
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap');
+
 body {
   margin: 0;
   font-family: 'Roboto', sans-serif;
+}
+
+button {
+  position: relative;
+  font-family: inherit;
+  cursor: pointer;
+  &:hover {
+    box-shadow: 0 2px 4px #ccc;
+  }
 }
 
 .app {
@@ -437,43 +478,68 @@ body {
   &__gradient-info {
     margin-top: 20px;
   }
-}
+  &__shard-color-settings {
+    margin-top: 20px;
+  }
 
-.app__filter-search {
-  display: block;
-  margin-top: 10px;
-  padding: 10px;
-  width: 100%;
-  font-size: 16px;
-  border-radius: 5px;
-  border: 1px solid rgba(60, 60, 60, .26);
-}
+  &__heading {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    font-size: 24px;
+    line-height: 28px;
+  }
 
-.app__info {
-  width: 600px;
-  padding: 20px;
-  overflow: auto;
-}
+  &__filter-search {
+    display: block;
+    margin-top: 10px;
+    padding: 10px;
+    width: 100%;
+    font-size: 16px;
+    border-radius: 5px;
+    border: 1px solid rgba(60, 60, 60, .26);
+  }
 
-.app__filter-field {
-  margin-top: 10px;
-}
+  &__info {
+    width: 600px;
+    padding: 20px;
+    overflow: auto;
+  }
 
-.app__toggle-bar {
-  display: flex;
-  gap: 10px;
-}
+  &__filter-field {
+    margin-top: 10px;
+  }
 
-.app__toggle-btn {
-  flex: 1;
-  padding: 10px;
-  border: solid 1px #aaa;
-  border-radius: 4px;
-  background: #ffd5db;
-  cursor: pointer;
+  &__toggle-bar {
+    display: flex;
+    gap: 10px;
+  }
 
-  &_active {
-    background: #b9ffb9;
+  &__toggle-btn {
+    flex: 1;
+    padding: 10px;
+    border: solid 1px #aaa;
+    border-radius: 4px;
+    background: #ffd5db;
+    cursor: pointer;
+
+    &_active {
+      background: #b9ffb9;
+    }
+  }
+
+  &__download {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    gap: 20px;
+    padding: 10px 20px;
+    font-size: 14px;
+    line-height: 16px;
+    background: #F7F7F7;
+    border: solid 1px #338b1d;
+    border-radius: 8px;
   }
 }
 </style>

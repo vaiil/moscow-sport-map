@@ -1,6 +1,5 @@
 <template>
   <div class="point-info">
-    <h2>Информация о пересечении</h2>
     <div class="point-info__attributes">
       <div>
         <b>Число объектов:</b> {{ pointInfo.nearObjects.length }}
