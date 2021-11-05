@@ -101,7 +101,6 @@
 <script>
 import vSelect from 'vue-select';
 import 'vue-select/dist/vue-select.css';
-import L from 'leaflet';
 import lunr from 'lunr';
 import support from 'lunr-languages/lunr.stemmer.support';
 import ru from 'lunr-languages/lunr.ru';
@@ -110,11 +109,9 @@ import * as turf from '@turf/turf';
 import {
   objects, owners, valueTypes, sports, zoneTypes, shards, populations,
 } from '../test-data/data.json';
-import populationAreas from '../test-data/population_areas.json';
 import AppMap from './components/AppMap.vue';
 import AppPointInfo from './components/AppPointInfo.vue';
 import uniqueItems from './helpers/unique-items';
-// import uniqueItems from './helpers/unique-items';
 
 support(lunr);
 ru(lunr);
@@ -323,23 +320,7 @@ export default {
         });
     },
     populationAreas() {
-      return populationAreas.map((item) => {
-        const points = item.geometry.coordinates[0].map(([lng, lat]) => ({
-          lat,
-          lng,
-        }));
-        const square = L.GeometryUtil.geodesicArea(points);
-        const { population } = item.properties;
-        const density = population / square;
-
-        return Object.freeze({
-          id: item.id,
-          points,
-          square,
-          population,
-          density,
-        });
-      });
+      return Array.from(Object.values(populations));
     },
   },
   watch: {

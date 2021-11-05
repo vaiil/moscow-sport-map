@@ -13,29 +13,37 @@
     <l-layer-group
       :visible="settings.showPopulation"
     >
-      <l-polygon
+      <l-geo-json
         v-for="area of areas"
         :key="area.id"
-        :lat-lngs="area.polygon"
-        :fill="true"
-        fill-color="red"
-        :fill-opacity="area.opacity"
-        :stroke="true"
-        color="red"
-        :opacity="area.opacity"
+        :geojson="area.geoJSON"
+        :options="{
+          style: {
+            fill: true,
+            fillColor: 'red',
+            fillOpacity: area.opacity,
+            stroke: true,
+            color: 'red',
+            opacity: area.opacity
+          }
+        }"
       />
     </l-layer-group>
     <l-layer-group
       :visible="settings.showValueZones"
     >
-      <l-polygon
+      <l-geo-json
         v-for="area of areas"
         :key="area.id"
-        :lat-lngs="area.polygon"
-        :fill="false"
-        :stroke="true"
-        color="darkred"
-        :weight="2"
+        :geojson="area.geoJSON"
+        :options="{
+          style: {
+            fill: false,
+            stroke: true,
+            color: 'darkred',
+            weight: 2
+          }
+        }"
       />
     </l-layer-group>
     <l-layer-group
@@ -91,7 +99,7 @@
 <script>
 import 'leaflet/dist/leaflet.css';
 import {
-  LMap, LTileLayer, LGeoJson, LPolygon, LMarker, LPopup, LLayerGroup,
+  LMap, LTileLayer, LGeoJson, LMarker, LPopup, LLayerGroup,
 } from '@vue-leaflet/vue-leaflet';
 import L from 'leaflet';
 import AppObjectInfo from './AppObjectInfo.vue';
@@ -111,9 +119,7 @@ export default {
     AppObjectInfo,
     LMap,
     LTileLayer,
-    // LCircle,
     LGeoJson,
-    LPolygon,
     LMarker,
     LPopup,
     LLayerGroup,
@@ -184,8 +190,7 @@ export default {
     },
     areas() {
       return this.populationAreas.map((area) => ({
-        id: area.id,
-        polygon: area.points.map((item) => [item.lat, item.lng]),
+        ...area,
         opacity: 0.1 + (area.density / this.maxDensity) * 0.4,
       }));
     },
