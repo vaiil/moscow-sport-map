@@ -150,6 +150,10 @@ export default {
       type: Array,
       required: true,
     },
+    shardColors: {
+      type: Array,
+      required: true,
+    },
     settings: {
       type: Object,
       required: true,
@@ -162,15 +166,9 @@ export default {
     };
   },
   computed: {
-    shardValues() {
-      return this.shards.map((shard) => this.calculateValueForColor(shard));
-    },
     shardsWithColor() {
-      const min = Math.min(...this.shardValues);
-      const max = Math.max(...this.shardValues.filter((item) => Number.isFinite(item)));
       return this.shards.map((shard, index) => {
-        const value = this.shardValues[index];
-        const part = ((value - min) / max) * 255;
+        const part = this.shardColors[index];
         return ({
           ...shard,
           options: {
@@ -178,8 +176,8 @@ export default {
               fill: true,
               weight: 0,
               color: 'green',
-              fillOpacity: 0.5,
-              fillColor: `rgb(${255 - part}, ${part}, 0)`,
+              fillOpacity: Number.isFinite(part) ? 0.5 : 0,
+              fillColor: `hsl(${part}, 100%, 50%)`,
             },
           },
         });
@@ -220,26 +218,6 @@ export default {
     },
   },
   methods: {
-    calculateValueForColor(shard) {
-      const { square, sportCount, zoneTypeCount } = shard;
-      let value = 0;
-      switch (this.settings.calculateType.key) {
-        case 'sport_count':
-          value = sportCount;
-          break;
-        case 'zone_type_count':
-          value = zoneTypeCount;
-          break;
-        case 'square':
-        default:
-          value = square;
-          break;
-      }
-      if (this.settings.calculateDensity) {
-        value /= shard.density;
-      }
-      return value;
-    },
     setItemRef(el) {
       if (el?.leafletObject?.options) {
         this.shardRefs[el.leafletObject.options.geojson.properties.id] = el;

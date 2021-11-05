@@ -7,6 +7,7 @@
       :point="pointInfo?.point"
       :settings="mapSettings"
       :shards="shards"
+      :shard-colors="shardColors"
       :selected-shard="pointInfo?.selectedShard"
       @mapClick="showInfo"
     />
@@ -38,17 +39,22 @@
       <div v-if="mapSettings.showValueZones">
         <label>
           <input
-            v-model="mapSettings.calculateDensity"
+            v-model="colorCalculationSettings.calculateDensity"
             type="checkbox"
           > Расчет цветов с учетом плотности населения
         </label>
 
         <v-select
-          v-model="mapSettings.calculateType"
+          v-model="colorCalculationSettings.calculateType"
           class="app__filter-field"
           :options="calculateTypes"
           label="title"
           placeholder="Расчет цветов по"
+        />
+        <app-gradient-info
+          class="app__gradient-info"
+          :start-value="shardMinColorValue"
+          :end-value="shardMaxColorValue"
         />
       </div>
       <input
@@ -112,6 +118,7 @@ import {
 import AppMap from './components/AppMap.vue';
 import AppPointInfo from './components/AppPointInfo.vue';
 import uniqueItems from './helpers/unique-items';
+import AppGradientInfo from './components/AppGradientInfo.vue';
 
 support(lunr);
 ru(lunr);
@@ -141,6 +148,9 @@ const prepareShards = shards.map((shard, index) => ({
   },
   id: index + 1,
 }));
+
+const MIN_HUE = 240;
+const MAX_HUE = 0;
 
 const searchIndex = lunr(function createIndex() {
   this.use(lunr.multiLanguage('en', 'ru'));
@@ -183,6 +193,7 @@ const calculateTypes = [
 export default {
   name: 'App',
   components: {
+    AppGradientInfo,
     AppPointInfo,
     AppMap,
     vSelect,
@@ -203,6 +214,8 @@ export default {
         showPopulation: false,
         showMarkers: true,
         showValueZones: false,
+      },
+      colorCalculationSettings: {
         calculateDensity: false,
         calculateType: calculateTypes[0],
       },
@@ -303,6 +316,22 @@ export default {
           });
         });
     },
+    shardColorValues() {
+      return this.shards.map((shard) => this.calculateValueForColor(shard));
+    },
+    shardMinColorValue() {
+      return Math.min(...this.shardColorValues);
+    },
+    shardMaxColorValue() {
+      return Math.max(...this.shardColorValues.filter((item) => Number.isFinite(item)));
+    },
+    shardColors() {
+      const len = this.shardMaxColorValue - this.shardMinColorValue;
+      const hueDiff = (MAX_HUE - MIN_HUE);
+      return this.shardColorValues.map(
+        (value) => MIN_HUE + ((value - this.shardMinColorValue) / len) * hueDiff,
+      );
+    },
     populationAreas() {
       return Array.from(Object.values(populations));
     },
@@ -370,6 +399,26 @@ export default {
         populationArea: shard.populationId !== null ? populations[shard.populationId] : null,
       };
     },
+    calculateValueForColor(shard) {
+      const { square, sportCount, zoneTypeCount } = shard;
+      let value = 0;
+      switch (this.colorCalculationSettings.calculateType.key) {
+        case 'sport_count':
+          value = sportCount;
+          break;
+        case 'zone_type_count':
+          value = zoneTypeCount;
+          break;
+        case 'square':
+        default:
+          value = square;
+          break;
+      }
+      if (this.colorCalculationSettings.calculateDensity) {
+        value /= shard.density;
+      }
+      return value;
+    },
   },
 };
 </script>
@@ -384,6 +433,10 @@ body {
 .app {
   display: flex;
   height: 100vh;
+
+  &__gradient-info {
+    margin-top: 20px;
+  }
 }
 
 .app__filter-search {
