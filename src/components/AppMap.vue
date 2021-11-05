@@ -224,6 +224,7 @@ export default {
       }
     },
     selectShard(event, shardId) {
+      console.log(event, shardId);
       if (event.latlng) {
         this.$emit('mapClick', {
           point: event.latlng,

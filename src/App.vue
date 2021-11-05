@@ -325,12 +325,12 @@ export default {
       const objectIds = new Set(this.filteredObjects.map(({ id }) => id));
 
       return prepareShards
-        .filter((shard) => shard.objects.some((id) => objectIds.has(id)))
         .map((shard) => {
           const shardObjects = shard.objects.filter((id) => objectIds.has(id));
           const excludes = shard.excludes.filter((id) => objectIds.has(id));
           return ({
             ...shard,
+            active: shard.objects.some((id) => objectIds.has(id)),
             key: `${shardObjects.join('-')}-${shard.populationId}`,
             objects: shardObjects,
             excludes,
@@ -383,17 +383,22 @@ export default {
     showInfo({ point, shardId }) {
       const shard = this.shards.find(({ id }) => id === shardId);
 
+      let geoJSON = turf.circle([this.center[1], this.center[0]], 10, { units: 'kilometers' });
       const firstObject = objectsMap.get(shard.objects[0]);
-      let geoJSON = shard.objects
+      geoJSON = shard.objects
         .reduce(
           (result, id) => turf.intersect(
             result, objectsMap.get(id).geoJSON,
           ),
-          firstObject.geoJSON,
+          geoJSON,
         );
 
       if (shard.populationId !== null) {
-        geoJSON = turf.intersect(geoJSON, populations[shard.populationId].geoJSON);
+        if (!geoJSON) {
+          geoJSON = populations[shard.populationId].geoJSON;
+        } else {
+          geoJSON = turf.intersect(geoJSON, populations[shard.populationId].geoJSON);
+        }
       } else {
         geoJSON = Array.from(Object.values(populations))
           .reduce((result, population) => turf.difference(result, population.geoJSON), geoJSON);
@@ -402,10 +407,10 @@ export default {
       const excludes = this.filteredObjects.filter(({
         id, radius, lat, lng,
       }) => !shard.objects.includes(id)
-        && turf.distance([lng, lat], [firstObject.lng, firstObject.lat], {
+        && (!firstObject || turf.distance([lng, lat], [firstObject.lng, firstObject.lat], {
           units: 'meters',
         })
-        < (radius + firstObject.radius));
+        < (radius + firstObject.radius)));
 
       if (excludes.length) {
         const excludeRegion = excludes
@@ -433,6 +438,9 @@ export default {
     },
     calculateValueForColor(shard) {
       const { square, sportCount, zoneTypeCount } = shard;
+      if (!shard.active) {
+        return Infinity;
+      }
       let value = 0;
       switch (this.colorCalculationSettings.calculateType.key) {
         case 'sport_count':
