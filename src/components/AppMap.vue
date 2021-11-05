@@ -216,11 +216,24 @@ export default {
   },
   methods: {
     calculateValueForColor(shard) {
-      let { square } = shard;
-      if (this.settings.calculateDensity) {
-        square /= shard.density;
+      const { square, sportCount, zoneTypeCount } = shard;
+      let value = 0;
+      switch (this.settings.calculateType.key) {
+        case 'sport_count':
+          value = sportCount;
+          break;
+        case 'zone_type_count':
+          value = zoneTypeCount;
+          break;
+        case 'square':
+        default:
+          value = square;
+          break;
       }
-      return square;
+      if (this.settings.calculateDensity) {
+        value /= shard.density;
+      }
+      return value;
     },
     setItemRef(el) {
       if (el?.leafletObject?.options) {

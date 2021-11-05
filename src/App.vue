@@ -42,6 +42,14 @@
             type="checkbox"
           > Расчет цветов с учетом плотности населения
         </label>
+
+        <v-select
+          v-model="mapSettings.calculateType"
+          class="app__filter-field"
+          :options="calculateTypes"
+          label="title"
+          placeholder="Расчет цветов по"
+        />
       </div>
       <input
         v-model="search"
@@ -105,6 +113,7 @@ import {
 import populationAreas from '../test-data/population_areas.json';
 import AppMap from './components/AppMap.vue';
 import AppPointInfo from './components/AppPointInfo.vue';
+import uniqueItems from './helpers/unique-items';
 // import uniqueItems from './helpers/unique-items';
 
 support(lunr);
@@ -133,9 +142,9 @@ const preparedObjects = objects.map((object) => {
     center,
     radius: getRadius(object.valueId),
     square: object.zones.reduce((sum, zone) => sum + zone.square, 0),
-    sports: new Set(object.zones.map((zone) => zone.sports)
+    sports: uniqueItems(object.zones.map((zone) => zone.sports)
       .flat()),
-    zoneTypes: new Set(object.zones.map(({ zoneType }) => zoneType)),
+    zoneTypes: uniqueItems(object.zones.map(({ zoneType }) => zoneType)),
   }));
 });
 
@@ -175,6 +184,21 @@ const searchIndex = lunr(function createIndex() {
   });
 });
 
+const calculateTypes = [
+  {
+    key: 'square',
+    title: 'По площади',
+  },
+  {
+    key: 'sport_count',
+    title: 'По кол-ву видов спорта',
+  },
+  {
+    key: 'zone_type_count',
+    title: 'По кол-ву зон',
+  },
+];
+
 export default {
   name: 'App',
   components: {
@@ -187,6 +211,7 @@ export default {
       center: [55.78, 37.48],
       pointInfo: null,
       search: '',
+      calculateTypes,
       filter: {
         owners: [],
         valueTypes: [],
@@ -198,6 +223,7 @@ export default {
         showMarkers: true,
         showValueZones: false,
         calculateDensity: false,
+        calculateType: calculateTypes[0],
       },
       selectedArea: null,
     };
@@ -287,6 +313,12 @@ export default {
             excludes,
             square: shardObjects
               .reduce((s, objectId) => s + objectsMap.get(objectId).square, 0),
+            sportCount: uniqueItems(
+              shardObjects.map((id) => objectsMap.get(id).sports).flat(),
+            ).length,
+            zoneTypeCount: uniqueItems(
+              shardObjects.map((id) => objectsMap.get(id).zoneTypes).flat(),
+            ).length,
           });
         });
     },
