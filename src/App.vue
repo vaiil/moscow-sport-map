@@ -43,24 +43,30 @@
         v-if="mapSettings.showValueZones"
         class="app__shard-color-settings"
       >
-        <v-select
-          v-model="colorCalculationSettings.calculateType"
-          class="app__filter-field"
-          :options="calculateTypes"
-          label="title"
-          placeholder="Расчет цветов по"
-        />
-        <label>
-          <input
-            v-model="colorCalculationSettings.calculateDensity"
-            type="checkbox"
-          > Расчет цветов с учетом плотности населения
-        </label>
-        <app-gradient-info
-          class="app__gradient-info"
-          :start-value="shardMinColorValue"
-          :end-value="shardMaxColorValue"
-        />
+        <div class="app__filter-field">
+          <div class="app__filter-one-line">
+            Тепловая карта:
+            <v-select
+              v-model="colorCalculationSettings.calculateType"
+              :options="calculateTypes"
+              class="app__filter-field-select"
+              label="title"
+            />
+          </div>
+        </div>
+        <div class="app__filter-field">
+          <label>
+            <input
+              v-model="colorCalculationSettings.calculateDensity"
+              type="checkbox"
+            > Расчет цветов с учетом плотности населения
+          </label>
+          <app-gradient-info
+            class="app__gradient-info"
+            :start-value="shardMinColorValue"
+            :end-value="shardMaxColorValue"
+          />
+        </div>
       </div>
       <div class="app__heading">
         Поиск и фильтрация
@@ -201,15 +207,15 @@ const searchIndex = lunr(function createIndex() {
 const calculateTypes = [
   {
     key: 'square',
-    title: 'По площади',
+    title: 'По площади, м2',
   },
   {
     key: 'sport_count',
-    title: 'По кол-ву видов спорта',
+    title: 'По кол-ву видов спорта, шт',
   },
   {
     key: 'zone_type_count',
-    title: 'По кол-ву зон',
+    title: 'По кол-ву зон, шт',
   },
 ];
 
@@ -283,12 +289,12 @@ export default {
           }
         }
         if (this.filter.sports.length > 0) {
-          if (!this.filter.sports.some((sport) => item.sports.has(sport))) {
+          if (!this.filter.sports.some((sport) => item.sports.includes(sport))) {
             return false;
           }
         }
         if (this.filter.zoneTypes.length > 0) {
-          if (!this.filter.zoneTypes.some((zoneType) => item.zoneTypes.has(zoneType))) {
+          if (!this.filter.zoneTypes.some((zoneType) => item.zoneTypes.includes(zoneType))) {
             return false;
           }
         }
@@ -504,9 +510,18 @@ button {
     padding: 20px;
     overflow: auto;
   }
-
   &__filter-field {
     margin-top: 10px;
+  }
+
+  &__filter-one-line {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  &__filter-field-select {
+    flex: 1
   }
 
   &__toggle-bar {
@@ -544,6 +559,9 @@ button {
 }
 </style>
 <style>
+.vs__dropdown-toggle {
+  min-height: 40px;
+}
 .vs__dropdown-option {
   white-space: normal;
 }
