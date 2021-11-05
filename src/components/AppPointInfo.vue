@@ -1,20 +1,9 @@
 <template>
   <div class="point-info">
-    <table class="point-info__attributes">
-      <tbody>
-        <tr
-          v-for="attribute of attributes"
-          :key="attribute.name"
-        >
-          <td class="point-info__attribute-label">
-            {{ attribute.name }}
-          </td>
-          <td class="point-info__attribute-value">
-            {{ attribute.value }}
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <AppAttributesTable
+      :attributes="attributes"
+      class="point-info__attributes"
+    />
     <div class="point-info__heading">
       Список объектов
     </div>
@@ -30,10 +19,11 @@
 
 <script>
 import AppObjectInfo from './AppObjectInfo.vue';
+import AppAttributesTable from './AppAttributesTable.vue';
 
 export default {
   name: 'AppPointInfo',
-  components: { AppObjectInfo },
+  components: { AppAttributesTable, AppObjectInfo },
   props: {
     pointInfo: {
       type: Object,
@@ -139,20 +129,8 @@ export default {
 <style lang="scss">
 .point-info {
   &__object {
-    margin-top: 20px;
-    font-size: 14px;
-  }
-  &__attributes {
-    font-weight: 300;
-    font-size: 14px;
-    line-height: 16px;
-  }
-
-  &__attribute-value {
-    color: #1A237E;
-    font-weight: 500;
-    font-size: 14px;
-    line-height: 16px;
+    margin-top: 30px;
+    font-size: 16px;
   }
 
   &__heading {

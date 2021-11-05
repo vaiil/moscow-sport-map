@@ -3,46 +3,61 @@
     <div class="object-info__title">
       {{ object.id }}, {{ object.name }}
     </div>
-    <div class="object-info__attribute">
-      <b>Ведомство:</b> {{ object.ownerName }}
-    </div>
-    <div class="object-info__attribute">
-      <b>Адрес:</b> {{ object.address }}
-    </div>
-    <div class="object-info__attribute">
-      <b>Доступность:</b> {{ object.valueName }}
-    </div>
-    <div class="object-info__attribute">
-      <b>Общая площадь спортивных зон:</b> {{ object.square }}
-    </div>
+    <app-attributes-table :attributes="objectAttributes" />
     <div class="object-info__zones-title">
       Зоны
     </div>
     <div
-      v-for="zone of object.zones"
+      v-for="zone of zones"
       :key="zone.id"
       class="object-info__zone"
     >
       <div class="object-info__zone-name">
-        {{ zone.zoneName }}
+        {{ zone.name }}
       </div>
-      <div class="object-info__zone-square">
-        <b>Площадь:</b> {{ zone.square }}, <b>тип:</b> {{ zone.zoneType }}
-      </div>
-      <div class="object-info__zone-square">
-        <b>Виды спорта:</b> {{ zone.sports.join(', ') }}
-      </div>
+      <app-attributes-table :attributes="zone.attributes" />
     </div>
   </div>
 </template>
 
 <script>
+import AppAttributesTable from './AppAttributesTable.vue';
+
 export default {
   name: 'AppObjectInfo',
+  components: { AppAttributesTable },
   props: {
     object: {
       type: Object,
       required: true,
+    },
+  },
+  computed: {
+    objectAttributes() {
+      return [
+        { name: 'Ведомство:', value: this.object.ownerName },
+        { name: 'Адрес:', value: this.object.address },
+        { name: 'Доступность:', value: this.object.valueName },
+        { name: 'Общая площадь спортивных зон, м2:', value: this.object.square },
+      ];
+    },
+    zones() {
+      return this.object.zones.map((zone) => (
+        {
+          id: zone.id,
+          name: zone.zoneName,
+          attributes: [
+            {
+              name: 'Площадь, м2:',
+              value: zone.square,
+            },
+            {
+              name: 'Виды спорта:',
+              value: zone.sports.join(', '),
+            },
+          ],
+        }
+      ));
     },
   },
 };
@@ -50,29 +65,21 @@ export default {
 
 <style lang="scss">
 .object-info {
-  &__title {
-    font-size: 1.3em;
+  &__title, &__zones-title {
+    font-size: 1.2em;
     line-height: 1.1;
     margin: 0 0 10px;
-    font-weight: bold;
-  }
-
-  &__adress {
-    //
   }
 
   &__zones-title {
-    font-size: 1.2em;
-    line-height: 1.1;
-    margin: 20px 0 10px;
-    font-weight: bold;
+    margin-top: 10px;
   }
 
   &__zone-name {
     font-size: 1em;
     line-height: 1.1;
     margin: 10px 0;
-    font-weight: bold;
+    font-weight: 500;
   }
 }
 </style>

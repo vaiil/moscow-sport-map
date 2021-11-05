@@ -476,6 +476,10 @@ body {
   font-family: 'Roboto', sans-serif;
 }
 
+.leaflet-container {
+  font-family: 'Roboto', sans-serif;
+}
+
 button {
   position: relative;
   font-family: inherit;
