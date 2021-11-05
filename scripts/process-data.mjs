@@ -86,6 +86,7 @@ function createObject({
   lat,
   lng,
 }) {
+  const radius = getRadius(valueId)
   return {
     id,
     name,
@@ -94,10 +95,11 @@ function createObject({
     valueId,
     ownerName,
     valueName,
+    radius,
     lat: +lat,
     lng: +lng,
     zones: new Map(),
-    geoJSON: turf.circle([+lng, +lat], getRadius(valueId) / 1000),
+    geoJSON: turf.circle([+lng, +lat], radius / 1000),
   };
 }
 
@@ -277,7 +279,7 @@ function processItems(lines) {
     zone.sports.push(line.sportName);
   }
 
-  const objects = [...objectMap.entries()].map(([key, value]) => (
+  const objects = [...objectMap.entries()].map(([value]) => (
     {
       ...value,
       zones: Array.from(value.zones.values()),

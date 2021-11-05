@@ -117,27 +117,11 @@ support(lunr);
 ru(lunr);
 multi(lunr);
 
-function getRadius(type) {
-  switch (+type) {
-    case 1:
-      return 5000;
-    case 2:
-      return 3000;
-    case 3:
-      return 1000;
-    case 4:
-      return 200;
-    default:
-      return 10;
-  }
-}
-
 const preparedObjects = objects.map((object) => {
   const center = [+object.lat, +object.lng];
   return (Object.freeze({
     ...object,
     center,
-    radius: getRadius(object.valueId),
     square: object.zones.reduce((sum, zone) => sum + zone.square, 0),
     sports: uniqueItems(object.zones.map((zone) => zone.sports)
       .flat()),
@@ -338,12 +322,13 @@ export default {
     showInfo({ point, shardId }) {
       const shard = this.shards.find(({ id }) => id === shardId);
 
+      const firstObject = objectsMap.get(shard.objects[0]);
       let geoJSON = shard.objects
         .reduce(
           (result, id) => turf.intersect(
             result, objectsMap.get(id).geoJSON,
           ),
-          objectsMap.get(shard.objects[0]).geoJSON,
+          firstObject.geoJSON,
         );
 
       if (shard.populationId !== null) {
@@ -353,7 +338,14 @@ export default {
           .reduce((result, population) => turf.difference(result, population.geoJSON), geoJSON);
       }
 
-      const excludes = this.filteredObjects.filter(({ id }) => !shard.objects.includes(id));
+      const excludes = this.filteredObjects.filter(({
+        id, radius, lat, lng,
+      }) => !shard.objects.includes(id)
+        && turf.distance([lng, lat], [firstObject.lng, firstObject.lat], {
+          units: 'meters',
+        })
+        < (radius + firstObject.radius));
+
       if (excludes.length) {
         const excludeRegion = excludes
           .reduce(
@@ -368,7 +360,7 @@ export default {
       const collection = turf.flatten(geoJSON);
 
       const selectedShard = collection.features
-        .find((feature) => turf.inside([point.lng, point.lat], feature));
+        .find((feature) => turf.booleanPointInPolygon([point.lng, point.lat], feature));
 
       this.pointInfo = {
         point,
