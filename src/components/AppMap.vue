@@ -3,7 +3,6 @@
     class="app-map"
     :zoom="14"
     :center="center"
-    @click="mapClick"
   >
     <l-tile-layer
       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -14,24 +13,60 @@
     <l-layer-group
       :visible="settings.showPopulation"
     >
-      <l-polygon
+      <l-geo-json
         v-for="area of areas"
         :key="area.id"
-        :lat-lngs="area.polygon"
-        :fill="true"
-        fill-color="red"
-        :fill-opacity="area.opacity"
-        :stroke="true"
-        color="red"
-        :opacity="area.opacity"
+        :geojson="area.geoJSON"
+        :options="{
+          style: {
+            fill: true,
+            fillColor: 'red',
+            fillOpacity: area.opacity,
+            stroke: true,
+            color: 'red',
+            opacity: area.opacity
+          }
+        }"
       />
     </l-layer-group>
-    <l-layer-group :visible="settings.showValueZones">
+    <l-layer-group
+      :visible="settings.showValueZones"
+    >
       <l-geo-json
-        v-for="object of sportObjectCircles"
+        v-for="area of areas"
+        :key="area.id"
+        :geojson="area.geoJSON"
+        :options="{
+          style: {
+            fill: false,
+            stroke: true,
+            color: 'darkred',
+            weight: 2
+          }
+        }"
+      />
+    </l-layer-group>
+    <l-layer-group
+      :visible="settings.showValueZones"
+    >
+      <l-geo-json
+        v-for="shard of shardsWithColor"
+        :ref="setItemRef"
+        :key="shard.id"
+        :geojson="shard.geoJSON"
+        :options="shard.options"
+
+        @click="selectShard($event, shard.id)"
+      />
+    </l-layer-group>
+    <l-layer-group
+      :visible="settings.showValueZones"
+    >
+      <l-geo-json
+        v-for="object of sportObjects"
         :key="object.id"
-        :geojson="object.geoJson"
-        :options="{style: object.style}"
+        :geojson="object.geoJSON"
+        :options="{style: sportValueZoneStyle, interactive: false}"
       />
     </l-layer-group>
     <l-layer-group :visible="settings.showMarkers">
@@ -50,8 +85,8 @@
       </l-marker>
     </l-layer-group>
     <l-geo-json
-      v-if="objectsIntersection"
-      :geojson="objectsIntersection"
+      v-if="selectedShard"
+      :geojson="selectedShard"
     />
     <l-marker
       v-if="point"
@@ -64,7 +99,7 @@
 <script>
 import 'leaflet/dist/leaflet.css';
 import {
-  LMap, LTileLayer, LGeoJson, LPolygon, LMarker, LPopup, LLayerGroup,
+  LMap, LTileLayer, LGeoJson, LMarker, LPopup, LLayerGroup,
 } from '@vue-leaflet/vue-leaflet';
 import L from 'leaflet';
 import AppObjectInfo from './AppObjectInfo.vue';
@@ -84,9 +119,7 @@ export default {
     AppObjectInfo,
     LMap,
     LTileLayer,
-    // LCircle,
     LGeoJson,
-    LPolygon,
     LMarker,
     LPopup,
     LLayerGroup,
@@ -105,15 +138,21 @@ export default {
       type: Array,
       required: true,
     },
-    objectsIntersection: {
+    selectedShard: {
       type: Object,
-      required: true,
+      default: null,
     },
     point: {
-      validator(a) {
-        return Array.isArray(a) || a === null;
-      },
+      type: Object,
       default: null,
+    },
+    shards: {
+      type: Array,
+      required: true,
+    },
+    shardColors: {
+      type: Array,
+      required: true,
     },
     settings: {
       type: Object,
@@ -121,44 +160,76 @@ export default {
     },
   },
   emits: ['mapClick'],
+  data() {
+    return {
+      shardRefs: {},
+    };
+  },
   computed: {
-    sportObjectCircles() {
-      const maxSquare = Math.max(...this.sportObjects.map(({ square }) => square));
-      return this.sportObjects.map((object) => ({
-        id: object.id,
-        geoJson: object.geoJson,
-        style: {
-          fillOpacity: (object.square / maxSquare) * 0.6,
-          fill: true,
-          weight: 2,
-          color: 'green',
-          fillColor: 'green',
-        },
-      }));
+    shardsWithColor() {
+      return this.shards.map((shard, index) => {
+        const part = this.shardColors[index];
+        return ({
+          ...shard,
+          options: {
+            style: {
+              fill: true,
+              weight: 0,
+              color: 'green',
+              fillOpacity: Number.isFinite(part) ? 0.5 : 0,
+              fillColor: `hsl(${part}, 100%, 50%)`,
+            },
+          },
+        });
+      });
     },
     maxDensity() {
       return Math.max(...this.populationAreas.map(({ density }) => density));
     },
     areas() {
       return this.populationAreas.map((area) => ({
-        id: area.id,
-        polygon: area.points.map((item) => [item.lat, item.lng]),
+        ...area,
         opacity: 0.1 + (area.density / this.maxDensity) * 0.4,
       }));
     },
     sportValueZoneStyle() {
       return {
         weight: 2,
-        color: '#ECEFF1',
+        color: '#345b28',
         opacity: 1,
-        fillOpacity: 1,
+        fillOpacity: 0,
       };
     },
   },
+  watch: {
+    shardsWithColor: {
+      immediate: true,
+      handler(value) {
+        // eslint-disable-next-line no-restricted-syntax
+        for (const item of value) {
+          const shardEl = this.shardRefs[item.id];
+          if (!shardEl) {
+            // eslint-disable-next-line no-continue
+            continue;
+          }
+          shardEl.leafletObject.setStyle(item.options.style);
+        }
+      },
+    },
+  },
   methods: {
-    mapClick(e) {
-      if (e.latlng) {
-        this.$emit('mapClick', e);
+    setItemRef(el) {
+      if (el?.leafletObject?.options) {
+        this.shardRefs[el.leafletObject.options.geojson.properties.id] = el;
+      }
+    },
+    selectShard(event, shardId) {
+      console.log(event, shardId);
+      if (event.latlng) {
+        this.$emit('mapClick', {
+          point: event.latlng,
+          shardId,
+        });
       }
     },
   },
