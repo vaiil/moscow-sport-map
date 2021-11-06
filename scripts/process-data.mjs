@@ -111,7 +111,7 @@ function getRadius(type) {
     case 3:
       return 1000;
     case 4:
-      return 500;
+      return 200;
     default:
       return 10;
   }
@@ -161,7 +161,7 @@ function createObject({
     lat: +lat,
     lng: +lng,
     zones: new Map(),
-    geoJSON: turf.circle([+lng, +lat], radius / 1000),
+    geoJSON: turf.circle([+lng, +lat], radius / 1000, { steps: 30}),
   };
 }
 

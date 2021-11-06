@@ -18,6 +18,7 @@
         :key="area.id"
         :geojson="area.geoJSON"
         :options="{
+          interactive: false,
           style: {
             fill: true,
             fillColor: 'red',
@@ -46,9 +47,7 @@
         }"
       />
     </l-layer-group>
-    <l-layer-group
-      :visible="settings.showValueZones"
-    >
+    <l-layer-group>
       <l-geo-json
         v-for="shard of shardsWithColor"
         :ref="setItemRef"
@@ -66,7 +65,7 @@
         v-for="object of sportObjects"
         :key="object.id"
         :geojson="object.geoJSON"
-        :options="{style: sportValueZoneStyle, interactive: false}"
+        :options="sportValueZoneOptions"
       />
     </l-layer-group>
     <l-layer-group :visible="settings.showMarkers">
@@ -176,7 +175,7 @@ export default {
               fill: true,
               weight: 0,
               color: 'green',
-              fillOpacity: Number.isFinite(part) ? 0.5 : 0,
+              fillOpacity: (this.settings.showValueZones && Number.isFinite(part)) ? 0.5 : 0,
               fillColor: `hsl(${part}, 100%, 50%)`,
             },
           },
@@ -192,12 +191,15 @@ export default {
         opacity: 0.1 + (area.density / this.maxDensity) * 0.4,
       }));
     },
-    sportValueZoneStyle() {
+    sportValueZoneOptions() {
       return {
-        weight: 2,
-        color: '#345b28',
-        opacity: 1,
-        fillOpacity: 0,
+        style: {
+          weight: 2,
+          color: '#345b28',
+          opacity: 0.6,
+          fillOpacity: 0,
+        },
+        interactive: false,
       };
     },
   },
