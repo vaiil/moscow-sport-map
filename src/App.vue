@@ -369,16 +369,17 @@ export default {
       return sports;
     },
     shards() {
-      const objectIds = new Set(this.filteredObjects.map(({ id }) => id));
+      const filteredObjectsMap = new Map(this.filteredObjects.map((object) => [object.id, object]));
 
       return prepareShards
         .map((shard) => {
-          const shardObjects = shard.objects.filter((id) => objectIds.has(id));
+          const shardObjects = shard.objects.filter((id) => filteredObjectsMap.has(id));
           return ({
             ...shard,
-            empty: shard.objects.some((id) => objectIds.has(id)),
+            empty: shard.objects.some((id) => filteredObjectsMap.has(id)),
             key: `${shardObjects.join('-')}-${shard.populationId}`,
-            indicators: calculateKeyIndicators(shardObjects.map((id) => objectsMap.get(id))),
+            indicators: calculateKeyIndicators(shardObjects
+              .map((id) => filteredObjectsMap.get(id))),
             objects: shardObjects,
           });
         });
