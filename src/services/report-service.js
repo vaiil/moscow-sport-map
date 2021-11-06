@@ -70,6 +70,7 @@ export function makeSportTypesReport(indicators) {
       per100k: {
         zoneCount: format(per100k.zoneCount),
         area: format(per100k.area),
+        realArea: per100k.area,
       },
     })))
     .sort((a, b) => b.realArea - a.realArea);

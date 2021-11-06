@@ -1,9 +1,20 @@
 <template>
-  <div v-if="data">
+  <div
+    v-if="data"
+    class="chart"
+  >
     <bar-chart
       :chart-data="data"
       :options="options"
     />
+    <div class="chart__field">
+      <label>
+        <input
+          v-model="per100k"
+          type="checkbox"
+        > расчет на 100 000 человек
+      </label>
+    </div>
   </div>
 </template>
 
@@ -23,8 +34,7 @@ export default {
   },
   data() {
     return {
-      chart: null,
-      chartRef: null,
+      per100k: false,
       options: {
         indexAxis: 'y',
         // Elements options apply to all of the options unless overridden in a dataset
@@ -49,7 +59,16 @@ export default {
   },
   computed: {
     sports() {
-      return this.sportTypeReport.slice(0, 10);
+      return this.sportTypeReport
+        .map((item) => {
+          const value = this.per100k ? item.per100k.realArea : item.realArea;
+          return {
+            value,
+            name: item.name,
+          };
+        })
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 10);
     },
     data() {
       return {
@@ -61,7 +80,7 @@ export default {
             borderColor: 'rgb(54, 162, 235)',
             backgroundColor: 'rgba(54, 162, 235, 0.5)',
             data: this.sports.map((row) => ({
-              x: row.realArea,
+              x: row.value,
               y: row.name,
             })),
           },
@@ -73,5 +92,9 @@ export default {
 </script>
 
 <style scoped>
-
+.chart__field {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 300;
+}
 </style>
