@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="data"
+    v-if="sportTypeReport && sportTypeReport.length > 0"
     class="chart"
   >
     <bar-chart
