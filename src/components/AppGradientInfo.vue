@@ -4,7 +4,7 @@
     <div class="app-gradient-info__values">
       <div class="app-gradient-info__value">
         <div class="app-gradient-info__value-number">
-          от {{ parseFloat(startValue.toPrecision(5)) }}
+          от {{ start }}
         </div>
         <div class="app-gradient-info__value-label">
           (минимум)
@@ -12,7 +12,7 @@
       </div>
       <div class="app-gradient-info__value app-gradient-info__value_type_right">
         <div class="app-gradient-info__value-number">
-          до {{ parseFloat(endValue.toPrecision(5)) }}
+          до {{ end }}
         </div>
         <div class="app-gradient-info__value-label">
           (максимум)
@@ -23,6 +23,8 @@
 </template>
 
 <script>
+import format from '../helpers/number-format';
+
 export default {
   name: 'AppGradientInfo',
   props: {
@@ -33,6 +35,14 @@ export default {
     endValue: {
       type: Number,
       required: true,
+    },
+  },
+  computed: {
+    start() {
+      return format(this.startValue);
+    },
+    end() {
+      return format(this.endValue);
     },
   },
 };

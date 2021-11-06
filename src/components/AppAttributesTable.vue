@@ -31,6 +31,7 @@ export default {
 
 <style lang="scss">
 .attributes-table {
+  width: 100%;
   font-weight: 300;
   font-size: 0.875em;
   line-height: 1em;

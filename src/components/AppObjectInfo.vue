@@ -13,7 +13,7 @@
       class="object-info__zone"
     >
       <div class="object-info__zone-name">
-        {{ zone.name }}
+        {{ zone.id }}, {{ zone.name }}
       </div>
       <app-attributes-table :attributes="zone.attributes" />
     </div>
@@ -40,19 +40,23 @@ export default {
         { title: 'Адрес', value: this.object.address },
         { title: 'Доступность', value: this.object.valueName },
         { title: 'Общая площадь спортивных зон', value: format(this.object.square), postfix: 'м2' },
-        { title: 'Оценочное число жителей в области доступности', value: parseInt(this.object.population, 10), postfix: 'человек' },
+        { title: 'Оценочное число жителей в области доступности', value: format(parseInt(this.object.population, 10)), postfix: 'человек' },
         { title: 'Площадь спортивных зон на 100 000 человек', value: format((this.object.square / this.object.population) * 100_000), postfix: 'м2' },
       ];
     },
     zones() {
       return this.object.zones.map((zone) => (
         {
-          id: zone.id,
+          id: zone.zoneId,
           name: zone.zoneName,
           attributes: [
             {
+              title: 'Тип',
+              value: zone.zoneType,
+            },
+            {
               title: 'Площадь',
-              value: zone.square,
+              value: format(zone.square),
               postfix: 'м2',
             },
             {

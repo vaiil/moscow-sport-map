@@ -171,11 +171,12 @@ function createZone({
   zoneName,
   square,
 }) {
+  const s = +square
   return {
     zoneType,
     zoneId,
     zoneName,
-    square: +square,
+    square: s < 200_000 ? s : 0,
     sports: [],
   };
 }

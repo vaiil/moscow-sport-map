@@ -14,7 +14,7 @@ export function makeCommonReport(indicators) {
   if (indicators.population) {
     populationRows.push({
       title: 'Оценочное кол-во жителей',
-      value: parseInt(indicators.population, 10),
+      value: format(parseInt(indicators.population, 10)),
       postfix: 'человек',
     },
     {
