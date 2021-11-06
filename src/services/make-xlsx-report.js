@@ -68,7 +68,22 @@ export default function makeXlsxReport({ indicators, nearObjects }) {
       return [firstColumn, value, valuePer100k];
     }),
   ]);
-  const sportList = xlsx.utils.aoa_to_sheet(makeSportTypesReport(indicators));
+  const sportList = xlsx.utils.aoa_to_sheet([
+    [
+      'Вид спорта',
+      'Число зон, шт.',
+      'Площадь зон, м2.',
+      'Число зон на 100 тыс. человек, шт',
+      'Площадь зон на 100 тыс. человек, м2',
+    ],
+    ...makeSportTypesReport(indicators).map((indicator) => [
+      indicator.name,
+      indicator.zoneCount,
+      indicator.area,
+      indicator.per100k.zoneCount,
+      indicator.per100k.area,
+    ]),
+  ]);
   const zoneList = xlsx.utils.aoa_to_sheet(makeSportObjectsList(nearObjects));
   xlsx.utils.book_append_sheet(wb, commonList, 'Общая информация');
   xlsx.utils.book_append_sheet(wb, sportList, 'Отчет по видам спорта');

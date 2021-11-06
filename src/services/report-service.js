@@ -59,29 +59,18 @@ export function makeCommonIndicators(indicators) {
 }
 
 export function makeSportTypesReport(indicators) {
-  const rows = [
-    [
-      'Вид спорта',
-      'Число зон, шт.',
-      'Площадь зон, м2.',
-    ],
-  ];
-  if (indicators.density) {
-    rows[0].push('Число зон на 100 тыс. человек, шт');
-    rows[0].push('Площадь зон на 100 тыс. человек, м2');
-  }
-  return rows.concat(indicators.reportBySports.map((({
-    sportName, zoneCount, area, per100k,
-  }) => {
-    const row = [
-      sportName,
-      format(zoneCount),
-      format(area),
-    ];
-    if (per100k) {
-      row.push(format(per100k.zoneCount));
-      row.push(format(per100k.area));
-    }
-    return row;
-  })));
+  return indicators.reportBySports
+    .map((({
+      sportName, zoneCount, area, per100k,
+    }) => ({
+      name: sportName,
+      zoneCount: format(zoneCount),
+      area: format(area),
+      realArea: area,
+      per100k: {
+        zoneCount: format(per100k.zoneCount),
+        area: format(per100k.area),
+      },
+    })))
+    .sort((a, b) => b.realArea - a.realArea);
 }

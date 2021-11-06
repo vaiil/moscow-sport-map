@@ -143,6 +143,13 @@
           >
           Скачать Excel отчет
         </button>
+        <div class="app__chart">
+          <AppChart
+            v-if="sportTypesReport"
+            :key="sportTypesReport"
+            :sport-type-report="sportTypesReport"
+          />
+        </div>
         <div class="app__heading">
           Список объектов
         </div>
@@ -171,7 +178,12 @@ import AppGradientInfo from './components/AppGradientInfo.vue';
 import makeXlsxReport from './services/make-xlsx-report';
 import calculateIntersectionIndicators, { calculateKeyIndicators } from './services/calculate-intersection-indicators';
 import AppAttributesTable from './components/AppAttributesTable.vue';
-import { makeCommonIndicators, makeCommonReport } from './services/report-service';
+import {
+  makeCommonIndicators,
+  makeCommonReport,
+  makeSportTypesReport,
+} from './services/report-service';
+import AppChart from './components/AppChart.vue';
 
 support(lunr);
 ru(lunr);
@@ -240,6 +252,7 @@ export default {
     AppGradientInfo,
     AppPointInfo,
     AppMap,
+    AppChart,
     vSelect,
   },
   data() {
@@ -411,6 +424,9 @@ export default {
         ]).flat(),
       ];
     },
+    sportTypesReport() {
+      return makeSportTypesReport(this.indicators);
+    },
   },
   watch: {
     filter: {
@@ -481,7 +497,12 @@ export default {
       };
     },
     calculateValueForColor(shard) {
-      if (this.colorCalculationSettings.excludeEmpty && !shard.density) {
+      if (
+        (
+          this.colorCalculationSettings.excludeEmpty
+          || this.colorCalculationSettings.calculateDensity
+        )
+        && !shard.density) {
         return Infinity;
       }
       let value = 0;
