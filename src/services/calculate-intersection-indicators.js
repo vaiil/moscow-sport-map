@@ -1,6 +1,41 @@
 import uniqueItems from '../helpers/unique-items';
 
-export default function calculateIndicators({ nearObjects, populationArea, area }) {
+export function calculateKeyIndicators(intersectedObjects) {
+  const report = {
+    objectCount: 0,
+    sportObjectArea: 0,
+    zoneCount: 0,
+    sportTypeCount: 0,
+  };
+
+  const per100kReport = {
+    objectCount: 0,
+    sportObjectArea: 0,
+    zoneCount: 0,
+    sportTypeCount: 0,
+  };
+
+  for (const object of intersectedObjects) {
+    report.objectCount += 1;
+    report.sportObjectArea += object.square;
+    report.zoneCount += object.zones.length;
+    report.sportTypeCount += object.sports.length;
+
+    const coefficient = 100_000 / object.population;
+
+    per100kReport.objectCount += coefficient;
+    per100kReport.sportObjectArea += object.square * coefficient;
+    per100kReport.zoneCount += object.zones.length * coefficient;
+    per100kReport.sportTypeCount += object.sports.length * coefficient;
+  }
+
+  return {
+    report,
+    per100kReport,
+  };
+}
+
+export default function calculateIntersectionIndicators({ nearObjects, populationArea, area }) {
   const sportObjectArea = nearObjects.reduce((sum, item) => sum + item.square, 0).toFixed(1);
   const uniqueSports = uniqueItems(nearObjects.map(({ sports }) => sports).flat());
   const allZones = nearObjects.map(({ zones }) => zones).flat();

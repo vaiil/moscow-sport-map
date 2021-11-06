@@ -57,16 +57,24 @@
         <div class="app__filter-field">
           <label>
             <input
+              v-model="colorCalculationSettings.per100k"
+              type="checkbox"
+            > расчет на 100 000 человек
+          </label>
+        </div>
+        <div class="app__filter-field">
+          <label>
+            <input
               v-model="colorCalculationSettings.calculateDensity"
               type="checkbox"
-            > Расчет цветов с учетом плотности населения
+            > наложить на карту плотности населения
           </label>
-          <app-gradient-info
-            class="app__gradient-info"
-            :start-value="shardMinColorValue"
-            :end-value="shardMaxColorValue"
-          />
         </div>
+        <app-gradient-info
+          class="app__gradient-info"
+          :start-value="shardMinColorValue"
+          :end-value="shardMaxColorValue"
+        />
       </div>
       <div class="app__heading">
         Поиск и фильтрация
@@ -151,10 +159,9 @@ import {
 } from '../test-data/data.json';
 import AppMap from './components/AppMap.vue';
 import AppPointInfo from './components/AppPointInfo.vue';
-import uniqueItems from './helpers/unique-items';
 import AppGradientInfo from './components/AppGradientInfo.vue';
 import makeXlsxReport from './services/make-xlsx-report';
-import calculateIndicators from './services/calculate-indicators';
+import calculateIntersectionIndicators, { calculateKeyIndicators } from './services/calculate-intersection-indicators';
 import AppAttributesTable from './components/AppAttributesTable.vue';
 import { makeCommonIndicators, makeCommonReport } from './services/report-service';
 
@@ -245,6 +252,7 @@ export default {
         showValueZones: false,
       },
       colorCalculationSettings: {
+        per100k: false,
         calculateDensity: false,
         calculateType: calculateTypes[0],
       },
@@ -331,15 +339,8 @@ export default {
             ...shard,
             active: shard.objects.some((id) => objectIds.has(id)),
             key: `${shardObjects.join('-')}-${shard.populationId}`,
+            indicators: calculateKeyIndicators(shardObjects.map((id) => objectsMap.get(id))),
             objects: shardObjects,
-            square: shardObjects
-              .reduce((s, objectId) => s + objectsMap.get(objectId).square, 0),
-            sportCount: uniqueItems(
-              shardObjects.map((id) => objectsMap.get(id).sports).flat(),
-            ).length,
-            zoneTypeCount: uniqueItems(
-              shardObjects.map((id) => objectsMap.get(id).zoneTypes).flat(),
-            ).length,
           });
         });
     },
@@ -363,7 +364,7 @@ export default {
       return Array.from(Object.values(populations));
     },
     indicators() {
-      return this.pointInfo ? calculateIndicators(this.pointInfo) : null;
+      return this.pointInfo ? calculateIntersectionIndicators(this.pointInfo) : null;
     },
     commonReport() {
       return [
@@ -454,21 +455,22 @@ export default {
       };
     },
     calculateValueForColor(shard) {
-      const { square, sportCount, zoneTypeCount } = shard;
       if (!shard.active) {
         return Infinity;
       }
       let value = 0;
+      const report = this.colorCalculationSettings.per100k
+        ? shard.indicators.per100kReport : shard.indicators.report;
       switch (this.colorCalculationSettings.calculateType.key) {
         case 'sport_count':
-          value = sportCount;
+          value = report.sportTypeCount;
           break;
         case 'zone_type_count':
-          value = zoneTypeCount;
+          value = report.zoneCount;
           break;
         case 'square':
         default:
-          value = square;
+          value = report.sportObjectArea;
           break;
       }
       if (this.colorCalculationSettings.calculateDensity) {

@@ -4,7 +4,7 @@
     <div class="app-gradient-info__values">
       <div class="app-gradient-info__value">
         <div class="app-gradient-info__value-number">
-          от {{ parseFloat(startValue.toPrecision(8)) }}
+          от {{ parseFloat(startValue.toPrecision(5)) }}
         </div>
         <div class="app-gradient-info__value-label">
           (минимум)
@@ -12,7 +12,7 @@
       </div>
       <div class="app-gradient-info__value app-gradient-info__value_type_right">
         <div class="app-gradient-info__value-number">
-          до {{ parseFloat(endValue.toPrecision(8)) }}
+          до {{ parseFloat(endValue.toPrecision(5)) }}
         </div>
         <div class="app-gradient-info__value-label">
           (максимум)
