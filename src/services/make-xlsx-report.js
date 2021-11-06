@@ -1,98 +1,8 @@
 import xlsx from 'xlsx';
-
-function format(value) {
-  return parseFloat(parseFloat(value).toPrecision(5));
-}
-
-function makeIndicatorsRow(indicators, indicatorNames) {
-  const rows = [
-    [
-      'Показатель',
-      'Значение',
-    ],
-  ];
-  if (indicators.density) {
-    rows[0].push('Значение на 100 тыс. человек');
-  }
-  return rows.concat(indicatorNames.map((({ indicator, label }) => {
-    const row = [
-      label,
-      format(indicators[indicator]),
-    ];
-    if (indicators.per100kReport) {
-      row.push(format(indicators.per100kReport[indicator]));
-    }
-    return row;
-  })));
-}
-
-function makeCommonReport(indicators) {
-  const populationRows = [];
-  if (indicators.population) {
-    populationRows.push([
-      'Оценочное кол-во жителей, человек.',
-      indicators.population,
-    ]);
-    populationRows.push([
-      'Плотность населения, жителей на км2',
-      format(indicators.density),
-    ]);
-  }
-  return [
-    [
-      'Площадь выбранного пересечения',
-      format(indicators.area),
-    ],
-    ...populationRows,
-    [],
-    ...makeIndicatorsRow(indicators, [
-      {
-        indicator: 'objectCount',
-        label: 'Число объектов, шт',
-      },
-      {
-        indicator: 'sportObjectArea',
-        label: 'Общая площадь спортивных объектов, м2',
-      },
-      {
-        indicator: 'zoneCount',
-        label: 'Число зон, шт',
-      },
-      {
-        indicator: 'sportTypeCount',
-        label: 'Число различных видов спорта, шт',
-      },
-    ]),
-  ];
-}
-
-function makeSportTypesReport(indicators) {
-  const rows = [
-    [
-      'Вид спорта',
-      'Число зон, шт.',
-      'Площадь зон, м2.',
-    ],
-  ];
-  if (indicators.density) {
-    rows[0].push('Число зон на 100 тыс. человек, шт');
-    rows[0].push('Площадь зон на 100 тыс. человек, м2');
-  }
-  return rows.concat(indicators.reportBySports.map((({
-    sportName, zoneCount, area, per100k,
-  }) => {
-    const row = [
-      sportName,
-      format(zoneCount),
-      format(area),
-    ];
-    if (per100k) {
-      row.push(format(per100k.zoneCount));
-      row.push(format(per100k.area));
-    }
-    return row;
-  })));
-}
+import {
+  makeCommonReport,
+  makeCommonIndicators, makeSportTypesReport,
+} from './report-service';
 
 function makeSportObjectsList(nearObjects) {
   const headRow = [
@@ -132,7 +42,32 @@ function makeSportObjectsList(nearObjects) {
 
 export default function makeXlsxReport({ indicators, nearObjects }) {
   const wb = xlsx.utils.book_new();
-  const commonList = xlsx.utils.aoa_to_sheet(makeCommonReport(indicators));
+  const commonList = xlsx.utils.aoa_to_sheet([
+    ...makeCommonReport(indicators).map(({ title, value, postfix }) => {
+      let firstColumn = title;
+      if (postfix) {
+        firstColumn += `, ${postfix}`;
+      }
+      return [firstColumn, value];
+    }),
+    [],
+    [
+      [
+        'Показатель',
+        'Значение',
+        'Значение на 100 тыс. человек',
+      ],
+    ],
+    ...makeCommonIndicators(indicators).map(({
+      title, value, postfix, valuePer100k,
+    }) => {
+      let firstColumn = title;
+      if (postfix) {
+        firstColumn += `, ${postfix}`;
+      }
+      return [firstColumn, value, valuePer100k];
+    }),
+  ]);
   const sportList = xlsx.utils.aoa_to_sheet(makeSportTypesReport(indicators));
   const zoneList = xlsx.utils.aoa_to_sheet(makeSportObjectsList(nearObjects));
   xlsx.utils.book_append_sheet(wb, commonList, 'Общая информация');

@@ -113,6 +113,10 @@
         <div class="app__heading">
           Информация о пересечении
         </div>
+        <AppAttributesTable
+          :attributes="commonReport"
+          class="app__intersection-attributes"
+        />
         <button
           class="app__download"
           @click="downloadXlsxReport"
@@ -123,6 +127,9 @@
           >
           Скачать Excel отчет
         </button>
+        <div class="app__heading">
+          Список объектов
+        </div>
         <AppPointInfo
           :point-info="pointInfo"
         />
@@ -148,22 +155,14 @@ import uniqueItems from './helpers/unique-items';
 import AppGradientInfo from './components/AppGradientInfo.vue';
 import makeXlsxReport from './services/make-xlsx-report';
 import calculateIndicators from './services/calculate-indicators';
+import AppAttributesTable from './components/AppAttributesTable.vue';
+import { makeCommonIndicators, makeCommonReport } from './services/report-service';
 
 support(lunr);
 ru(lunr);
 multi(lunr);
 
-const preparedObjects = objects.map((object) => {
-  const center = [+object.lat, +object.lng];
-  return (Object.freeze({
-    ...object,
-    center,
-    square: object.zones.reduce((sum, zone) => sum + zone.square, 0),
-    sports: uniqueItems(object.zones.map((zone) => zone.sports)
-      .flat()),
-    zoneTypes: uniqueItems(object.zones.map(({ zoneType }) => zoneType)),
-  }));
-});
+const preparedObjects = objects;
 
 const objectsMap = new Map(preparedObjects.map((item) => [item.id, item]));
 
@@ -222,6 +221,7 @@ const calculateTypes = [
 export default {
   name: 'App',
   components: {
+    AppAttributesTable,
     AppGradientInfo,
     AppPointInfo,
     AppMap,
@@ -327,13 +327,11 @@ export default {
       return prepareShards
         .map((shard) => {
           const shardObjects = shard.objects.filter((id) => objectIds.has(id));
-          const excludes = shard.excludes.filter((id) => objectIds.has(id));
           return ({
             ...shard,
             active: shard.objects.some((id) => objectIds.has(id)),
             key: `${shardObjects.join('-')}-${shard.populationId}`,
             objects: shardObjects,
-            excludes,
             square: shardObjects
               .reduce((s, objectId) => s + objectsMap.get(objectId).square, 0),
             sportCount: uniqueItems(
@@ -366,6 +364,25 @@ export default {
     },
     indicators() {
       return this.pointInfo ? calculateIndicators(this.pointInfo) : null;
+    },
+    commonReport() {
+      return [
+        ...makeCommonReport(this.indicators),
+        ...makeCommonIndicators(this.indicators).map(({
+          title, value, postfix, valuePer100k,
+        }) => [
+          {
+            title,
+            value,
+            postfix,
+          },
+          {
+            title: `${title} на 100 000 человек`,
+            value: valuePer100k,
+            postfix,
+          },
+        ]).flat(),
+      ];
     },
   },
   watch: {

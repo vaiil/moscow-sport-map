@@ -3,13 +3,14 @@
     <tbody>
       <tr
         v-for="attribute of attributes"
-        :key="attribute.name"
+        :key="attribute.title"
       >
         <td class="attributes-table__label">
-          {{ attribute.name }}
+          {{ attribute.title }}:
         </td>
         <td class="attributes-table__value">
           {{ attribute.value }}
+          <small v-if="attribute.postfix">{{ attribute.postfix }}</small>
         </td>
       </tr>
     </tbody>
@@ -31,10 +32,11 @@ export default {
 <style lang="scss">
 .attributes-table {
   font-weight: 300;
-  font-size: 14px;
-  line-height: 16px;
+  font-size: 0.875em;
+  line-height: 1em;
 
   td {
+    width: 50%;
     padding: 2px 2px 2px 0;
     border: 0;
     vertical-align: top;

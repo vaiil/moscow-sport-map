@@ -16,15 +16,16 @@ export default function calculateIndicators({ nearObjects, populationArea, area 
     population = Math.floor(populationArea.density * area);
   }
 
-  let per100kReport = null;
-  if (density !== null && density > 0) {
-    per100kReport = {
-      objectCount: (objectCount / density) * 100_000,
-      sportObjectArea: (sportObjectArea / density) * 100_000,
-      zoneCount: (zoneCount / density) * 100_000,
-      sportTypeCount: (sportTypeCount / density) * 100_000,
-    };
-  }
+  const per100kReport = {
+    objectCount: nearObjects.reduce((s, object) => s + 1 / object.population, 0) * 100_000,
+    sportObjectArea: nearObjects.reduce((s, object) => s + object.squarePerPerson, 0) * 100_000,
+    zoneCount: nearObjects.reduce(
+      (s, object) => s + object.zones.length / object.population, 0,
+    ) * 100_000,
+    sportTypeCount: nearObjects.reduce(
+      (s, object) => s + object.sports.length / object.population, 0,
+    ) * 100_000,
+  };
 
   const reportBySports = uniqueSports.map((sportName) => {
     const zones = allZones.filter(({ sports }) => sports.includes(sportName));
@@ -34,12 +35,10 @@ export default function calculateIndicators({ nearObjects, populationArea, area 
       area: zones.reduce((sum, item) => sum + item.square, 0).toFixed(1),
     };
 
-    if (density !== null && density > 0) {
-      report.per100k = {
-        zoneCount: (report.zoneCount / density) * 100_000,
-        area: (report.area / density) * 100_000,
-      };
-    }
+    report.per100k = {
+      zoneCount: zones.reduce((sum, item) => sum + 1 / item.population, 0) * 100_000,
+      area: zones.reduce((sum, item) => sum + item.squarePerPerson, 0) * 100_000,
+    };
     return report;
   });
 

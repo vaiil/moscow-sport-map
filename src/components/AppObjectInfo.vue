@@ -21,6 +21,7 @@
 </template>
 
 <script>
+import format from '../helpers/number-format';
 import AppAttributesTable from './AppAttributesTable.vue';
 
 export default {
@@ -35,10 +36,12 @@ export default {
   computed: {
     objectAttributes() {
       return [
-        { name: 'Ведомство:', value: this.object.ownerName },
-        { name: 'Адрес:', value: this.object.address },
-        { name: 'Доступность:', value: this.object.valueName },
-        { name: 'Общая площадь спортивных зон, м2:', value: this.object.square },
+        { title: 'Ведомство', value: this.object.ownerName },
+        { title: 'Адрес', value: this.object.address },
+        { title: 'Доступность', value: this.object.valueName },
+        { title: 'Общая площадь спортивных зон', value: this.object.square, postfix: 'м2' },
+        { title: 'Оценочное число жителей в области доступности', value: parseInt(this.object.population, 10), postfix: 'человек' },
+        { title: 'Площадь спортивных зон на 100 000 человек', value: format(this.object.squarePerPerson * 100_000), postfix: 'м2' },
       ];
     },
     zones() {
@@ -48,11 +51,12 @@ export default {
           name: zone.zoneName,
           attributes: [
             {
-              name: 'Площадь, м2:',
+              title: 'Площадь',
               value: zone.square,
+              postfix: 'м2',
             },
             {
-              name: 'Виды спорта:',
+              title: 'Виды спорта',
               value: zone.sports.join(', '),
             },
           ],
