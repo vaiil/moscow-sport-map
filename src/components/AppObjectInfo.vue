@@ -39,9 +39,9 @@ export default {
         { title: 'Ведомство', value: this.object.ownerName },
         { title: 'Адрес', value: this.object.address },
         { title: 'Доступность', value: this.object.valueName },
-        { title: 'Общая площадь спортивных зон', value: this.object.square, postfix: 'м2' },
+        { title: 'Общая площадь спортивных зон', value: format(this.object.square), postfix: 'м2' },
         { title: 'Оценочное число жителей в области доступности', value: parseInt(this.object.population, 10), postfix: 'человек' },
-        { title: 'Площадь спортивных зон на 100 000 человек', value: format(this.object.squarePerPerson * 100_000), postfix: 'м2' },
+        { title: 'Площадь спортивных зон на 100 000 человек', value: format((this.object.square / this.object.population) * 100_000), postfix: 'м2' },
       ];
     },
     zones() {

@@ -7,7 +7,7 @@
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
-    "convert-data": "node scripts/process-data.mjs --population-geo-json-file=test-data/population_areas.json --objects-csv-file=test-data/data.csv > test-data/data.json"
+    "convert-data": "node scripts/process-data.mjs --population-geo-json-file=test-data/population_areas.json --objects-csv-file=test-data/data.csv --bounding-region=test-data/region.json --near-regions=test-data/near-regions.json > test-data/data.json"
   },
   "dependencies": {
     "@turf/turf": "^6.5.0",

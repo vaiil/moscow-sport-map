@@ -53,7 +53,8 @@ export default function calculateIntersectionIndicators({ nearObjects, populatio
 
   const per100kReport = {
     objectCount: nearObjects.reduce((s, object) => s + 1 / object.population, 0) * 100_000,
-    sportObjectArea: nearObjects.reduce((s, object) => s + object.squarePerPerson, 0) * 100_000,
+    sportObjectArea:
+      nearObjects.reduce((s, object) => s + object.square / object.population, 0) * 100_000,
     zoneCount: nearObjects.reduce(
       (s, object) => s + object.zones.length / object.population, 0,
     ) * 100_000,
@@ -72,7 +73,7 @@ export default function calculateIntersectionIndicators({ nearObjects, populatio
 
     report.per100k = {
       zoneCount: zones.reduce((sum, item) => sum + 1 / item.population, 0) * 100_000,
-      area: zones.reduce((sum, item) => sum + item.squarePerPerson, 0) * 100_000,
+      area: zones.reduce((sum, item) => sum + item.square / item.population, 0) * 100_000,
     };
     return report;
   });

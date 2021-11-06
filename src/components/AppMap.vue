@@ -62,11 +62,16 @@
     <l-layer-group
       :visible="settings.showValueZones"
     >
-      <l-geo-json
+      <l-circle
         v-for="object of sportObjects"
         :key="object.id"
-        :geojson="object.geoJSON"
-        :options="{style: sportValueZoneStyle, interactive: false}"
+        :radius="object.radius"
+        :lat-lng="object.center"
+        :weight="2"
+        color="#345b28"
+        :opacity="0.6"
+        :fill="false"
+        :interactive="false"
       />
     </l-layer-group>
     <l-layer-group :visible="settings.showMarkers">
@@ -99,7 +104,7 @@
 <script>
 import 'leaflet/dist/leaflet.css';
 import {
-  LMap, LTileLayer, LGeoJson, LMarker, LPopup, LLayerGroup,
+  LMap, LTileLayer, LGeoJson, LMarker, LPopup, LLayerGroup, LCircle,
 } from '@vue-leaflet/vue-leaflet';
 import L from 'leaflet';
 import AppObjectInfo from './AppObjectInfo.vue';
@@ -123,6 +128,7 @@ export default {
     LMarker,
     LPopup,
     LLayerGroup,
+    LCircle,
   },
   greenIcon,
   props: {

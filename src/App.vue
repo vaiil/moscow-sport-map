@@ -70,6 +70,14 @@
             > наложить на карту плотности населения
           </label>
         </div>
+        <div class="app__filter-field">
+          <label>
+            <input
+              v-model="colorCalculationSettings.excludeEmpty"
+              type="checkbox"
+            > исключить нежилые территории
+          </label>
+        </div>
         <app-gradient-info
           class="app__gradient-info"
           :start-value="shardMinColorValue"
@@ -155,7 +163,7 @@ import ru from 'lunr-languages/lunr.ru';
 import multi from 'lunr-languages/lunr.multi';
 import * as turf from '@turf/turf';
 import {
-  objects, owners, valueTypes, sports, zoneTypes, shards, populations,
+  objects, owners, valueTypes, sports, zoneTypes, shards, populations, boundingRegion,
 } from '../test-data/data.json';
 import AppMap from './components/AppMap.vue';
 import AppPointInfo from './components/AppPointInfo.vue';
@@ -254,6 +262,7 @@ export default {
       colorCalculationSettings: {
         per100k: false,
         calculateDensity: false,
+        excludeEmpty: false,
         calculateType: calculateTypes[0],
       },
       selectedArea: null,
@@ -280,48 +289,65 @@ export default {
       return new Set(searchedItems.map(({ ref }) => ref));
     },
     filteredObjects() {
-      return this.mapObjects.filter((item) => {
-        if (this.searchResults) {
-          if (!this.searchResults.has(item.id)) {
-            return false;
+      return this.mapObjects
+        .filter((item) => {
+          if (this.searchResults) {
+            if (!this.searchResults.has(item.id)) {
+              return false;
+            }
           }
-        }
-        if (this.filter.owners.length > 0) {
-          if (!this.filter.owners.some((owner) => owner.id === item.ownerId)) {
-            return false;
+          if (this.filter.owners.length > 0) {
+            if (!this.filter.owners.some((owner) => owner.id === item.ownerId)) {
+              return false;
+            }
           }
-        }
-        if (this.filter.valueTypes.length > 0) {
-          if (!this.filter.valueTypes.some((valueType) => valueType.id === item.valueId)) {
-            return false;
+          if (this.filter.valueTypes.length > 0) {
+            if (!this.filter.valueTypes.some((valueType) => valueType.id === item.valueId)) {
+              return false;
+            }
           }
-        }
-        if (this.filter.sports.length > 0) {
-          if (!this.filter.sports.some((sport) => item.sports.includes(sport))) {
-            return false;
+          if (this.filter.sports.length > 0) {
+            if (!this.filter.sports.some((sport) => item.sports.includes(sport))) {
+              return false;
+            }
           }
-        }
-        if (this.filter.zoneTypes.length > 0) {
-          if (!this.filter.zoneTypes.some((zoneType) => item.zoneTypes.includes(zoneType))) {
-            return false;
+          if (this.filter.zoneTypes.length > 0) {
+            if (!this.filter.zoneTypes.some((zoneType) => item.zoneTypes.includes(zoneType))) {
+              return false;
+            }
           }
-        }
-        return true;
-      });
+          return true;
+        })
+        .map((object) => {
+          if (this.filter.sports.length === 0 && this.filter.zoneTypes.length === 0) {
+            return object;
+          }
+          const zones = object.zones.filter((zone) => {
+            if (this.filter.sports.length > 0) {
+              if (!this.filter.sports.some((sport) => zone.sports.includes(sport))) {
+                return false;
+              }
+            }
+            if (this.filter.zoneTypes.length > 0) {
+              if (!this.filter.zoneTypes.includes(zone.zoneType)) {
+                return false;
+              }
+            }
+            return true;
+          });
+          const square = zones.reduce((sum, zone) => sum + zone.square, 0);
+          return {
+            ...object,
+            zones,
+            square,
+          };
+        });
     },
     owners() {
-      return Object.entries(owners)
-        .map(([id, title]) => ({
-          id,
-          title,
-        }));
+      return owners;
     },
     valueTypes() {
-      return Object.entries(valueTypes)
-        .map(([id, title]) => ({
-          id,
-          title,
-        }));
+      return valueTypes;
     },
     zoneTypes() {
       return zoneTypes;
@@ -337,7 +363,7 @@ export default {
           const shardObjects = shard.objects.filter((id) => objectIds.has(id));
           return ({
             ...shard,
-            active: shard.objects.some((id) => objectIds.has(id)),
+            empty: shard.objects.some((id) => objectIds.has(id)),
             key: `${shardObjects.join('-')}-${shard.populationId}`,
             indicators: calculateKeyIndicators(shardObjects.map((id) => objectsMap.get(id))),
             objects: shardObjects,
@@ -401,7 +427,7 @@ export default {
     showInfo({ point, shardId }) {
       const shard = this.shards.find(({ id }) => id === shardId);
 
-      let geoJSON = turf.circle([this.center[1], this.center[0]], 10, { units: 'kilometers' });
+      let geoJSON = boundingRegion;
       const firstObject = objectsMap.get(shard.objects[0]);
       geoJSON = shard.objects
         .reduce(
@@ -450,12 +476,12 @@ export default {
         point,
         selectedShard,
         area: selectedShard ? turf.area(selectedShard) : null,
-        nearObjects: shard.objects.map((objectId) => objectsMap.get(objectId)),
+        nearObjects: this.filteredObjects.filter(({ id }) => shard.objects.includes(id)),
         populationArea: shard.populationId !== null ? populations[shard.populationId] : null,
       };
     },
     calculateValueForColor(shard) {
-      if (!shard.active) {
+      if (this.colorCalculationSettings.excludeEmpty && !shard.density) {
         return Infinity;
       }
       let value = 0;
