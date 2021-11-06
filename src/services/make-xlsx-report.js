@@ -52,11 +52,9 @@ export default function makeXlsxReport({ indicators, nearObjects }) {
     }),
     [],
     [
-      [
-        'Показатель',
-        'Значение',
-        'Значение на 100 тыс. человек',
-      ],
+      'Показатель',
+      'Значение',
+      'Значение на 100 тыс. человек',
     ],
     ...makeCommonIndicators(indicators).map(({
       title, value, postfix, valuePer100k,
